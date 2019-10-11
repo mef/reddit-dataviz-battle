@@ -1,0 +1,11 @@
+*.DS_Store
+Thumbs.db
+Desktop.ini
+
+logs
+*.log
+npm-debug.log*
+
+node_modules
+
+params.json
