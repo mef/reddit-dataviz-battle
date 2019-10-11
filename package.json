@@ -1,0 +1,30 @@
+{
+  "name": "reddit-dataviz-battle",
+  "version": "1.0.0",
+  "description": "My participations to /r/dataisbeautiful's monthly dataviz battles",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \\\"Error: no test specified\\\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mef/reddit-dataviz-battle.git"
+  },
+  "keywords": [
+    "dataviz",
+    "data-science",
+    "analytics",
+    "reddit",
+    "contest"
+  ],
+  "author": "Mehdi El Fadil",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mef/reddit-dataviz-battle/issues"
+  },
+  "homepage": "https://github.com/mef/reddit-dataviz-battle#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
+    "request": "^2.88.0"
+  }
+}
