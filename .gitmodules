@@ -1,0 +1,4 @@
+[submodule "2019/09-visualize-the-effect-of-hiding-comment-scores"]
+	path = 2019/09-visualize-the-effect-of-hiding-comment-scores
+	url = https://github.com/mef/redditFormula1-data.git
+	branch = gh-pages
