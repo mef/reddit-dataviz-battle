@@ -40,8 +40,11 @@ function downloadSrt(currentIndex) {
 		console.log('All srt files downloaded')
 	}
 	else {
-		if (currentIndex % 20 === 0)
-			console.log('. progress: ' + currentIndex / hyperLinks.length)
+		if (currentIndex % 20 === 0 && currentIndex !== 0 ) {
+			let progressPercentage = Math.floor(currentIndex / hyperLinks.length * 100)
+			console.log('. progress: ' + progressPercentage + ' %')
+		}
+			
 		downloadFile(hyperLinks[currentIndex], function(err, res) {
 			
 			if (err) {
@@ -52,7 +55,7 @@ function downloadSrt(currentIndex) {
 				saveFile(hyperLinks[currentIndex].substr(36), res, '../data/subtitles')
 				setTimeout(function() {
 					downloadSrt(++currentIndex)
-				}, 1000) // be gentle on the remote server: no more than one request per second.
+				}, 1000) // Let's be patient and gentle on the remote server: no more than one request per second.
 			}
 		})
 		
