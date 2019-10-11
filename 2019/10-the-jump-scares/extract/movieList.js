@@ -43,7 +43,13 @@ getMovieList('https://wheresthejump.com/full-movie-list/', function(err, res) {
 		if (err)
 			throw err
 		else {
-			saveFile('movieList.json', JSON.stringify(res), '../data')
+			
+			let movieList = {
+				data: res
+				, columns: ['title', 'director', 'year', 'jumpCount', 'jumpScareRating', 'netflixUS', 'imdbRating' ]
+			}
+			
+			saveFile('movieList.json', JSON.stringify(movieList), '../data')
 		}
 })
 
