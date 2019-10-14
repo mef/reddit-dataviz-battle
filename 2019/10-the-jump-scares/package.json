@@ -19,7 +19,8 @@
   ],
   "scripts": {
 	  "extract-subtitles": "node extract/subtitleFiles.js"
-	  ,"extract-movie-list": "node extract/movieList.js"
+	  , "extract-movie-list": "node extract/movieList.js"
+	  , "build-jumpscare-timeline": "node transform/jumpScaresTimeline.js"
   },
   "author": "Mehdi El Fadil",
   "license": "MIT",

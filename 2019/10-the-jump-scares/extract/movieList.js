@@ -1,6 +1,7 @@
 const cheerio = require('cheerio')
-	, downloadFile = require('./downloadFile')
-	, saveFile = require('./saveFile')
+console.log(__dirname)
+	 downloadFile = require('../../../utilities/downloadFile')
+	, saveFile = require('../../../utilities/saveFile')
 
 
 function getMovieList(sourceURL, callback) {
@@ -49,7 +50,7 @@ getMovieList('https://wheresthejump.com/full-movie-list/', function(err, res) {
 				, columns: ['title', 'director', 'year', 'jumpCount', 'jumpScareRating', 'netflixUS', 'imdbRating' ]
 			}
 			
-			saveFile('movieList.json', JSON.stringify(movieList), '../data')
+			saveFile('movieList.json', JSON.stringify(movieList), __dirname + '/../data')
 		}
 })
 

@@ -26,6 +26,8 @@ The following data can be extracted from wheresthejump.com
 Download the `.srt` files announcing jump scares for the all the movies referenced in the website.
 
     npm run extract-subtitles
+    
+The subtitles are placed in the directory `./data/subtitles`.
 
 #### Download the list of movies
 
@@ -40,4 +42,12 @@ Download the list of movies listed in `https://wheresthejump.com/full-movie-list
 
     npm run extract-subtitles
 
-The results are saved in a JSON file: `./data/moviesList.json`
+The results are saved in a JSON file: `./data/moviesList.json`.
+
+### Build a timeline of all jump scare in all movies
+
+This transformation script processes all the downloaded subtitles files and outputs a single file containing the jump-scare timestamps of all movies.
+
+    npm run build-jumpscare-timeline
+
+(!) node.js v12+ is required for this transformation to work, since `String.prototype.matchAll()` is used. Can be replaced by `Regexp.exec` in order to run on older versions of node.js (c.f. [MDN Article](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll).

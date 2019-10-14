@@ -1,6 +1,6 @@
 const cheerio = require('cheerio')
-	, downloadFile = require('./downloadFile')
-	, saveFile = require('./saveFile')
+	, downloadFile = require('../../../utilities/downloadFile')
+	, saveFile = require('../../../utilities/saveFile')
 
 
 let hyperLinks = []
@@ -47,7 +47,7 @@ function downloadSrt(currentIndex) {
 				throw err
 			}
 			else {				
-				saveFile(hyperLinks[currentIndex].substr(36), res, '../data')
+				saveFile(hyperLinks[currentIndex].substr(36), res, __dirname + '/../data')
 				setTimeout(function() {
 					downloadSrt(++currentIndex)
 				}, 500)

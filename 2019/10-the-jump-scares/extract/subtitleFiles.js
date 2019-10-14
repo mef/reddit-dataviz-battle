@@ -1,6 +1,6 @@
 const cheerio = require('cheerio')
-	, downloadFile = require('./downloadFile')
-	, saveFile = require('./saveFile')
+	, downloadFile = require('../../../utilities/downloadFile')
+	, saveFile = require('../../../utilities/saveFile')
 
 let hyperLinks
 
@@ -52,7 +52,7 @@ function downloadSrt(currentIndex) {
 				throw err
 			}
 			else {				
-				saveFile(hyperLinks[currentIndex].substr(36), res, '../data/subtitles')
+				saveFile(hyperLinks[currentIndex].substr(36), res, __dirname + '/../data/subtitles')
 				setTimeout(function() {
 					downloadSrt(++currentIndex)
 				}, 1000) // Let's be patient and gentle on the remote server: no more than one request per second.
