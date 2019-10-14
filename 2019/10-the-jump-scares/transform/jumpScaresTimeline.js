@@ -33,7 +33,7 @@ function processSrt(currentIndex) {
 	if (currentIndex === files.length) {
 		console.log('All srt files processed')
 		//~console.log(timeline)
-		saveFile('jump-scare-timeline.json', JSON.stringify(timeline), __dirname + '/../data')
+		saveFile('jumpScareTimeline.json', JSON.stringify(timeline), __dirname + '/../data')
 	}
 	else {
 		if (currentIndex % 20 === 0 && currentIndex !== 0 ) {

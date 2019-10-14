@@ -51,3 +51,7 @@ This transformation script processes all the downloaded subtitles files and outp
     npm run build-jumpscare-timeline
 
 (!) node.js v12+ is required for this transformation to work, since `String.prototype.matchAll()` is used. Can be replaced by `Regexp.exec` in order to run on older versions of node.js (c.f. [MDN Article](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll).
+
+
+The results are saved in a JSON file: `./data/jumpScareTimeline.json`.
+
