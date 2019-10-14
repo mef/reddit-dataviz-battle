@@ -66,13 +66,14 @@ function downloadSrt(currentIndex) {
 
 getHyperlinks('https://wheresthejump.com/jump-scare-subtitle-files/', function(err, res) {
 	
-		if (err)
-			throw err
-		else {
-			console.log('... found ' + res.length + ' links to srt files.')
-			hyperLinks = res
-			downloadSrt(0)
-		}
+	if (err)
+		throw err
+	else {
+		console.log('... found ' + res.length + ' links to srt files.')
+		hyperLinks = res
+		downloadSrt(0)
+	}
+		
 })
 
 
