@@ -6,6 +6,7 @@ let hyperLinks
 
 // crawl the page listing all hyperlink files
 function getHyperlinks(sourceURL, callback) {
+
 	console.log ('looking up srt files...')
 	
 	downloadFile(sourceURL, function(err, res) {
@@ -17,7 +18,7 @@ function getHyperlinks(sourceURL, callback) {
 		
 		let links = $('p a', '.entry-content')
 
-		let out = links.filter(function() {
+		let result = links.filter(function() {
 						return $(this).attr('href').endsWith('.srt')
 					})
 					.map(function() {
@@ -26,7 +27,7 @@ function getHyperlinks(sourceURL, callback) {
 					})
 					.toArray()
 		
-		callback(null, out)
+		callback(null, result)
 
 	})
 }

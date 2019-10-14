@@ -1,6 +1,5 @@
 const cheerio = require('cheerio')
-console.log(__dirname)
-	 downloadFile = require('../../../utilities/downloadFile')
+	, downloadFile = require('../../../utilities/downloadFile')
 	, saveFile = require('../../../utilities/saveFile')
 
 
@@ -14,7 +13,7 @@ function getMovieList(sourceURL, callback) {
 		
 		let movies = $('tr', '#tablepress-1 tbody')
 
-		let out = movies.map(function() {
+		let result = movies.map(function() {
 
 			// get the set of td
 			let row = $(this).children()
@@ -31,27 +30,25 @@ function getMovieList(sourceURL, callback) {
 				
 		}).toArray()
 
-		callback(null, out)
+		callback(null, result)
 
 	})
 }
 
 
-
-
 getMovieList('https://wheresthejump.com/full-movie-list/', function(err, res) {
 	
-		if (err)
-			throw err
-		else {
-			
-			let movieList = {
-				data: res
-				, columns: ['title', 'director', 'year', 'jumpCount', 'jumpScareRating', 'netflixUS', 'imdbRating' ]
-			}
-			
-			saveFile('movieList.json', JSON.stringify(movieList), __dirname + '/../data')
+	if (err)
+		throw err
+	else {
+		
+		let movieList = {
+			data: res
+			, columns: ['title', 'director', 'year', 'jumpCount', 'jumpScareRating', 'netflixUS', 'imdbRating' ]
 		}
+		
+		saveFile('movieList.json', JSON.stringify(movieList), __dirname + '/../data')
+	}
 })
 
 
