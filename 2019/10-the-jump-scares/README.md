@@ -10,11 +10,18 @@
     
 ### Run the whole ETL
 
-The following command extracts data from the online database and run the analysis scripts:
+The following command extracts data from the online database and run the data transformation scripts:
 
     npm start
-    
-Results are saved in the directory `output`.
+
+The following is executed:
+
+* download the list of movies
+* download extra metadata from each movie page
+* download all jump-scare timing subtitle files
+* process the subtitle files in a single JSON file containing timestamps of all jump-scares (both minor and major ones)
+
+Results are saved in the directory `data`.
 
 
 ### Run individual steps
@@ -27,7 +34,7 @@ Download the `.srt` files announcing jump scares for the all the movies referenc
 
     npm run extract-subtitles
     
-The subtitles are placed in the directory `./data/subtitles`.
+The subtitles are placed in the directory `data/subtitles`.
 
 #### Download the list of movies
 
@@ -42,7 +49,7 @@ Download the list of movies listed in `https://wheresthejump.com/full-movie-list
 
     npm run extract-subtitles
 
-The results are saved in a JSON file: `./data/moviesList.json`.
+The results are saved in a JSON file: `data/moviesList.json`.
 
 ### Build a timeline of all jump scare in all movies
 
@@ -53,5 +60,5 @@ This transformation script processes all the downloaded subtitles files and outp
 (!) node.js v12+ is required for this transformation to work, since `String.prototype.matchAll()` is used. Can be replaced by `Regexp.exec` in order to run on older versions of node.js (c.f. [MDN Article](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll).
 
 
-The results are saved in a JSON file: `./data/jumpScareTimeline.json`.
+The results are saved in a JSON file: `data/jumpScareTimeline.json`.
 

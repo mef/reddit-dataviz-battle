@@ -18,9 +18,11 @@
     "contest"
   ],
   "scripts": {
-	  "extract-subtitles": "node extract/subtitleFiles.js"
-	  , "extract-movie-list": "node extract/movieList.js"
+	  "extract-movie-list": "node extract/movieList.js"
+	  , "extract-movie-metadata": "node extract/movieMetadata.js"
+	  , "extract-subtitles": "node extract/subtitleFiles.js"
 	  , "build-jumpscare-timeline": "node transform/jumpScaresTimeline.js"
+	  , "start": "npm run extract-movie-list && npm run extract-movie-metadata && npm run extract-subtitles && npm run build-jumpscare-timeline"
   },
   "author": "Mehdi El Fadil",
   "license": "MIT",
