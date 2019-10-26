@@ -49,9 +49,9 @@ function getMetadata(currentIndex) {
 	}
 	else {
 		
-		if (currentIndex % 20 === 0 && currentIndex !== 0 ) {
+		if (currentIndex % 10 === 0 && currentIndex !== 0 ) {
 			let progressPercentage = Math.floor(currentIndex / pages.length * 100)
-			console.log('. progress: ' + progressPercentage + ' %')
+			process.stdout.write('. progress: ' + progressPercentage + ' %\033[0G');
 		}
 			
 		downloadFile(pages[currentIndex].link, function(err, res) {
@@ -97,7 +97,7 @@ function getMetadata(currentIndex) {
 				
 				setTimeout(function() {
 					getMetadata(++currentIndex)
-				}, 250) // Let's be patient and gentle on the remote server: no more than one request per second.
+				}, 750) // Let's be patient and gentle on the remote server
 			}
 			
 		})

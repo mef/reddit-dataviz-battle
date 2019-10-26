@@ -41,9 +41,9 @@ function downloadSrt(currentIndex) {
 		console.log('All srt files downloaded')
 	}
 	else {
-		if (currentIndex % 20 === 0 && currentIndex !== 0 ) {
+		if (currentIndex % 10 === 0 && currentIndex !== 0 ) {
 			let progressPercentage = Math.floor(currentIndex / hyperLinks.length * 100)
-			console.log('. progress: ' + progressPercentage + ' %')
+			process.stdout.write('. progress: ' + progressPercentage + ' %\033[0G');
 		}
 			
 		downloadFile(hyperLinks[currentIndex], function(err, res) {
