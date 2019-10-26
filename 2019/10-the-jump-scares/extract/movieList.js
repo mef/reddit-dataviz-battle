@@ -17,7 +17,8 @@ function getMovieList(sourceURL, callback) {
 
 			// get the set of td
 			let row = $(this).children()
-
+				, moviePageLink = row.first().find('a').attr('href')
+			
 			return {
 				title: row.first().text()
 				, director: row.eq(1).text()
@@ -26,8 +27,9 @@ function getMovieList(sourceURL, callback) {
 				, jumpScareRating: +row.eq(4).text()
 				, netflixUS: row.eq(5).text() === 'Yes'? true : false
 				, imdbRating: +row.eq(6).text()
+				, slug: moviePageLink.substring(26, moviePageLink.length-1)
 			}
-				
+			
 		}).toArray()
 
 		callback(null, result)
