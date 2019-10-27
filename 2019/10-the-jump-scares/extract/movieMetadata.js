@@ -35,6 +35,7 @@ function getMoviePages(sourceURL, callback) {
 	})
 }
 
+let struct = {}
 
 // download subtitle files
 function getMetadata(currentIndex) {
@@ -45,6 +46,12 @@ function getMetadata(currentIndex) {
 		
 		saveFile('movieListExtended.json', JSON.stringify(extendedMetadata), __dirname + '/../data')
 		console.log('All extended metadata downloaded')
+		
+		console.log('Availability of metadata values (count)')
+		
+		Object.keys(struct).forEach(function(key) {
+			console	.log(key, struct[key])
+		})
 		
 	}
 	else {
@@ -66,27 +73,57 @@ function getMetadata(currentIndex) {
 				
 				let metadata = $('p', '#content')
 
-				// remove different markup in movie page "the boy" (2015)
-				//~if (metadata.first().text().startsWith('Note:') {
-					//~//TODO: remove first child
-				//~}
-				
-				// remove headings
-				metadata.find('strong').remove()
-
-				// some movies do not have a rating on rottentomatoes. We store an empty string for them.
-				let rottenTomatoesRating = metadata.eq(4).text().match(rottenTomatoesRegex)
-				
 				let result = {
 					title: pages[currentIndex].title
 					, link: pages[currentIndex].link
-					, synopsis: metadata.first().text()
-					, runtime: +metadata.eq(2).text().replace(/ ?min.*/, '')
-					, mpaaRating: metadata.eq(3).text()
-					, rottenTomatoesRating: rottenTomatoesRating !== null ? rottenTomatoesRating[1] : ''
-					, tags: metadata.eq(6).text().split(',')
 					, srt: metadata.last().find('a').attr('href')
 				}
+				
+				let sections = metadata.find('strong')
+				
+				sections.each(function(i) {
+					if ( i < 10) {
+						let key = $(this).text().trim()
+							, parent = $(this).parent()
+							
+						parent.find('strong').remove()
+						
+						let val = parent.text().trim()
+						
+						if (isNaN(key[0])) {
+							
+							if ( typeof struct[key] === 'undefined')
+								 struct[key] = 1
+							else 
+								struct[key]++
+						}
+							
+						switch(key) {
+							case 'Synopsis:':
+								result['synopsis'] = val
+							break
+							case 'Runtime:':
+								result['runtime'] = +val.replace(/ ?min.*/, '')
+							break
+							case 'MPAA Rating:':
+								result['mpaaRating'] = val
+							break
+							case 'Rotten Tomatoes:':
+								// some movies do not have a rating on rottentomatoes.
+								let rottenTomatoesRating = val.match(rottenTomatoesRegex)
+								if (rottenTomatoesRating !== null)
+									result['rottenTomatoesRating'] = +rottenTomatoesRating[1]
+							break
+							case 'Tags:':
+								result['tags'] = val.split(',')
+							break
+						}
+						
+					}
+					
+				})
+
+
 				//~console.log(result)
 
 
@@ -97,7 +134,7 @@ function getMetadata(currentIndex) {
 				
 				setTimeout(function() {
 					getMetadata(++currentIndex)
-				}, 750) // Let's be patient and gentle on the remote server
+				}, 250) // Let's be patient and gentle on the remote server
 			}
 			
 		})
