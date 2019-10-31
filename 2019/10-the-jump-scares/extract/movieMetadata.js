@@ -76,8 +76,10 @@ function getMetadata(currentIndex) {
 				let result = {
 					title: pages[currentIndex].title
 					, link: pages[currentIndex].link
-					, srt: metadata.last().find('a').attr('href')
 				}
+				
+				if (metadata.last().find('a').attr('href') && metadata.last().find('a').attr('href').endsWith('.srt') )
+					result.srt = metadata.last().find('a').attr('href')
 				
 				let sections = metadata.find('strong')
 				
@@ -123,10 +125,7 @@ function getMetadata(currentIndex) {
 					
 				})
 
-
 				//~console.log(result)
-
-
 				
 				let slug = result.link.substring(26, result.link.length-1)
 				
