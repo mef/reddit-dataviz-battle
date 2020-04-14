@@ -1,0 +1,30 @@
+{
+  "name": "the-memonavirus",
+  "version": "1.0.0",
+  "description": "My participations to /r/dataisbeautiful's monthly dataviz battles",
+  "main": "index.js",
+  "scripts": {
+    "transform": "node transform/build-graph.js",
+    "start": "npm run transform"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mef/reddit-dataviz-battle.git"
+  },
+  "keywords": [
+    "dataviz",
+    "data-science",
+    "analytics",
+    "reddit",
+    "contest"
+  ],
+  "author": "Mehdi El Fadil",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mef/reddit-dataviz-battle/issues"
+  },
+  "homepage": "https://github.com/mef/reddit-dataviz-battle#readme",
+  "dependencies": {
+    "d3-fetch": "^1.1.2"
+  }
+}
