@@ -2,6 +2,8 @@
 
 [Reddit contest page](https://www.reddit.com/r/dataisbeautiful/comments/dei68x/battle_dataviz_battle_for_the_month_of_october/)
 
+The code in this directory scrapes the data source website and stores the extracted data in a suitable format for analysis.
+
 ## How to use
 
 ### Setup
@@ -51,7 +53,7 @@ Download the list of movies listed in `https://wheresthejump.com/full-movie-list
 
 The results are saved in a JSON file: `data/moviesList.json`.
 
-### Build a timeline of all jump scare in all movies
+#### Build a timeline of all jump scare in all movies
 
 This transformation script processes all the downloaded subtitles files and outputs a single file containing the jump-scare timestamps of all movies.
 
