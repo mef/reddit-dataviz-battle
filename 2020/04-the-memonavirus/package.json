@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "transform": "node transform/build-graph.js",
-    "start": "npm run transform"
+    "start": "node index"
   },
   "repository": {
     "type": "git",
@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/mef/reddit-dataviz-battle#readme",
   "dependencies": {
-    "d3-fetch": "^1.1.2"
+    "d3-fetch": "^1.1.2",
+    "tempy": "^0.5.0"
   }
 }
