@@ -34,7 +34,7 @@ function saveCurve() {
 	
 	let fileName = 'infection-curve.json'
 	
-	fs.writeFile(__dirname + '/../data/dist/' + fileName, JSON.stringify(infectionCurve), function(err, res) {
+	fs.writeFile(__dirname + '/../data/dist/' + fileName, JSON.stringify({timeLine: infectionCurve}), function(err, res) {
 		if (err)
 			throw err
 		
