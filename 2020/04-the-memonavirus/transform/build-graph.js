@@ -1,11 +1,11 @@
 const fs = require('fs')
 	, {DirectedGraph} = require('graphology')
+	, transformSteps = [listFiles, setCommentGraph, addInfections, saveResults]
 
 let commentFiles = []
 	, infectionFiles = []
 	, filePath
 	, graph = new DirectedGraph()
-	, transformSteps
 	, currentTransformStep = 0
 	, res = {}
 
@@ -27,17 +27,6 @@ function addInfections(currentIndex) {
 
 		console.log('... All infection log files processed')
 		console.log(graph.toString())
-
-
-		//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
-		
-		//~console.log('Save graph export file...')
-		//~fs.writeFile(__dirname + '/../data/graphExport.json', JSON.stringify(graph.toJSON()), function(err, res) {
-			//~if (err)
-				//~throw err
-			
-			//~console.log('graphExport.json saved')
-		//~})
 
 		next()
 	}
@@ -85,60 +74,9 @@ function addInfections(currentIndex) {
 			addInfections(++currentIndex)
 			
 		})
-		
 	}
-	
 }
 
-
-/****************************
- *
- * Build the infections curve
- * 
- * In order to measure the activity (number of comments) per hour, it is necessary to iterate through the edges.
- * 
- * Should it be needed only to get the infections, iterating though the graph's nodes would be more efficient.
- * 
- *****************************/
-function setCurve() {
-
-	let figuresPerHour = {}
-	
-	graph.forEachEdge(function(edge, attributes) {
-		
-		let commentHour = getHourTs(attributes.ts)
-		
-		if (!figuresPerHour[commentHour])
-			figuresPerHour[commentHour] = {
-				comments: 0
-				, infections: 0
-			}
-		
-		figuresPerHour[commentHour].comments++
-		
-		if (attributes.infection_ts) {
-			let infectionHour = getHourTs(attributes.infection_ts)
-			
-			if (!figuresPerHour[infectionHour])
-				figuresPerHour[infectionHour] = {
-					comments: 0
-					, infections: 0
-				}
-				
-			figuresPerHour[infectionHour].infections++
-		}
-		
-	})
-	
-	// temp output
-	
-	let sortedTimestamps = Object.keys(figuresPerHour).map(ts => parseInt(ts)).sort((a, b) => a - b)
-	
-	sortedTimestamps.forEach(ts => console.log(new Date(ts), figuresPerHour[ts].comments, figuresPerHour[ts].infections))
-	
-	
-	
-}
 
 /****************************
  *
@@ -228,8 +166,6 @@ function setCommentGraph(currentIndex) {
 	
 }
 
-
-
 /****************************
  *
  * Launch next transformation step
@@ -245,21 +181,27 @@ function next() {
 		
 }
 
+
 /****************************
  *
- * Utility function to convert a timestamp string to a date, truncated to the hour.
- * 
- * @param ts {string} timestamp string as formatted in reddit logs
+ * Export graph to a JSON file
  *
  *****************************/
-function getHourTs(ts) {
+function saveResults() {
+
+	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
-	// temp
-	//~return ts.substr(0,13)
+	console.log('Save graph export file...')
 	
-	ts = new Date(ts)
+	let fileName = 'infection-graph.json'
 	
-	return new Date(ts.setMinutes(0, 0, 0)).valueOf()
+	fs.writeFile(__dirname + '/../data/staging/' + fileName, JSON.stringify(graph.export()), function(err, res) {
+		if (err)
+			throw err
+		
+		console.log('...' + fileName + ' saved')
+	})
+		
 }
 
 /****************************
@@ -267,7 +209,7 @@ function getHourTs(ts) {
  * Start processing
  *
  *****************************/
-fs.readFile(__dirname + '/../data/metadata', 'utf8', function(err, path) {
+fs.readFile(__dirname + '/../data/metadata/datasourcePath', 'utf8', function(err, path) {
 	if (err)
 		throw err
 		
@@ -276,8 +218,6 @@ fs.readFile(__dirname + '/../data/metadata', 'utf8', function(err, path) {
 	console.log(' ')	
 	console.log('-----------------------------------------------------')	
 	console.log('Starting data transformation...', filePath)
-	
-	transformSteps = [listFiles, setCommentGraph, addInfections, setCurve]
 	
 	// launch first step
 	next()

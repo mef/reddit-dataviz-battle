@@ -6,7 +6,9 @@
   "scripts": {
     "start": "npm run extract && npm run transform",
     "extract": "node extract/index.js",
-    "transform": "node transform/index.js"
+    "transform": "npm run transform:build-graph && npm run transform:compute-stats",
+    "transform:build-graph": "node transform/build-graph.js",
+    "transform:compute-stats": "node transform/compute-stats.js"
   },
   "repository": {
     "type": "git",

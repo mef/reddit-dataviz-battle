@@ -11,7 +11,7 @@ console.log('Starting extraction of source data...')
 
 exec('git clone ' + repoUrl + ' ' + repoRoot, function(err, res) {
 	
-	fs.writeFile(__dirname + '/../data/metadata', repoRoot, function(err, res) {
+	fs.writeFile(__dirname + '/../data/metadata/datasourcePath', repoRoot, function(err, res) {
 		
 		if (err)
 			throw err
