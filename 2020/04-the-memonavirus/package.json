@@ -4,8 +4,9 @@
   "description": "My participations to /r/dataisbeautiful's monthly dataviz battles",
   "main": "index.js",
   "scripts": {
-    "transform": "node transform/build-graph.js",
-    "start": "node index"
+    "start": "npm run extract && npm run transform",
+    "extract": "node extract/index.js",
+    "transform": "node transform/index.js"
   },
   "repository": {
     "type": "git",

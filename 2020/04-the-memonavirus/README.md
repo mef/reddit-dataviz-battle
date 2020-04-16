@@ -14,25 +14,35 @@ Install node module dependencies with the command below.
     
 ## Usage
 
-The following command extracts data from the online repository and run the data transformation scripts.
-
-
-1. Copy the log files in the `data` directory of the [data source repository](https://github.com/dovedevic/memonavirus) into `./data/`
-2. Build the graph with the command below
+The following command extracts data from the online repository and run the data transformation scripts:
 
 ```
 npm start 
 ```
 
-The source repository is stored in a temporary directory and will be deleted at reboot. This is because the data volume is 250+M, and is probably not needed in the long term.
+The source repository is extracted in a temporary directory and will be deleted at reboot. This is because the data volume is 250+M, and is probably not needed in the long term.
 
-The temporary directory name is displayed during the script's execution.
+The temporary directory name is displayed during the script's execution, and saved in the file `./data/metadata`.
 
 // TODO add a cleanup script to remove the cloned repository once the processing is completed.
 
 The data transformation script stores its results in `./data/contamination-graph.json` file.
 
 // TODO document graph data format
+
+### Run extraction only
+
+```
+npm run extract
+```
+
+### Run transformation only
+
+The transform can run in stand-alone, using data source from the latest extraction run.
+
+```
+npm run transform
+```
 
 
 

@@ -1,13 +1,10 @@
 const fs = require('fs')
 	, {DirectedGraph} = require('graphology')
 
-// Private
-
 let commentFiles = []
 	, infectionFiles = []
 	, filePath
 	, graph = new DirectedGraph()
-
 
 function listFiles(path, callback) {
 	
@@ -146,16 +143,15 @@ function generateGraph() {
 	
 }
 
-// Public
-
-module.exports = function transform(path) {
+fs.readFile(__dirname + '/../data/metadata', 'utf8', function(err, path) {
+	if (err)
+		throw err
+		
+	filePath = path + '/data'
 
 	console.log(' ')	
 	console.log('-----------------------------------------------------')	
-	console.log('Starting data transformation...', path + '/data')
-	
-	filePath = path + '/data'
+	console.log('Starting data transformation...', filePath)
 	
 	listFiles(filePath, generateGraph)
-	
-}
+})
