@@ -15,3 +15,6 @@ My participations to /r/dataisbeautiful's monthly dataviz battles.
 * [Submission post](https://www.reddit.com/r/dataisbeautiful/comments/dq85oy/heres_the_jump_jumpscare_timelines_of_58_toprated/)
 * [Making-of notebook](https://observablehq.com/@mef/heres-the-jump) contains most of the data processing. The directory [2019/10-the-jump-scares](2019/10-the-jump-scares) hosts the code for the ETL (scraper and data formatting).
 
+## Coding standards (disclaimer)
+
+The code hosted in this repository is created in the context of data exploration tasks, mostly for ephemeral usage. The focus is getting things done, so the code structure is not necessarily optimal.
