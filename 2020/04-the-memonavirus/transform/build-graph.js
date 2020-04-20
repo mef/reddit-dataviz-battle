@@ -1,11 +1,13 @@
 const fs = require('fs')
 	, {DirectedGraph} = require('graphology')
-	, transformSteps = [listFiles, setCommentGraph, addInfections, saveResults]
+	
+const  transformSteps = [listFiles, setCommentGraph, addInfections, saveGraph, saveinfectionSubgraph]
 
 let commentFiles = []
 	, infectionFiles = []
 	, filePath
-	, graph = new DirectedGraph()
+	, graph = new DirectedGraph() // comments and infections
+	, infectionSubgraph = new DirectedGraph() // infections only
 	, currentTransformStep = 0
 	, res = {}
 
@@ -27,6 +29,7 @@ function addInfections(currentIndex) {
 
 		console.log('... All infection log files processed')
 		console.log(graph.toString())
+		console.log(infectionSubgraph.toString())
 
 		next()
 	}
@@ -39,7 +42,7 @@ function addInfections(currentIndex) {
 			let logFile = content.split('\n')
 			
 			// remove the last empty line of the file
-			logFile.pop()
+			//~logFile.pop()
 			
 			logFile.forEach( function(logLine) {
 				
@@ -57,6 +60,7 @@ function addInfections(currentIndex) {
 						infection_ts: data[0] // infection timestamp
 					})
 					
+					
 				}
 				catch(e) {
 					// The infection log line for patient 0 does not have a parent, hence graph.mergeEdgeAttributes fails to run.
@@ -65,6 +69,34 @@ function addInfections(currentIndex) {
 					
 					// record infected node
 					graph.mergeNodeAttributes(data[1], {
+						infection_ts: data[0]
+					})
+	
+				}
+				try {
+					
+					// record infected node
+					infectionSubgraph.mergeNode(data[1], {
+						infection_ts: data[0]
+					})
+					
+					infectionSubgraph.mergeNode(data[3])
+					
+					// record infectious edge
+					infectionSubgraph.mergeEdge(data[1], data[3], {
+						infection_ts: data[0] // infection timestamp
+					})
+					
+				}
+				catch(e) {
+					// The infection log line for patient 0 does not have a parent, hence graph.mergeEdgeAttributes fails to run.
+					
+					console.log(e)
+					
+					console.log('patient 0 is: ' + data[1] + ' - infected on ' + data[0])
+					
+					// record infected node
+					infectionSubgraph.mergeNode(data[1], {
 						infection_ts: data[0]
 					})
 				}
@@ -141,7 +173,7 @@ function setCommentGraph(currentIndex) {
 			let logFile = content.split('\n')
 			
 			// remove the last empty line of the file
-			logFile.pop()
+			//~logFile.pop()
 			
 			logFile.forEach( function(logLine) {
 			
@@ -184,10 +216,34 @@ function next() {
 
 /****************************
  *
+ * Export Infection subgraph to a JSON file
+ *
+ *****************************/
+function saveinfectionSubgraph() {
+
+	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
+	
+	console.log('Save infection graph export file...')
+	
+	let fileName = 'infection-subgraph.json'
+	
+	fs.writeFile(__dirname + '/../data/staging/' + fileName, JSON.stringify(infectionSubgraph.export()), function(err, res) {
+		if (err)
+			throw err
+		
+		console.log('...' + fileName + ' saved')
+		next()
+		
+	})
+
+}
+
+/****************************
+ *
  * Export graph to a JSON file
  *
  *****************************/
-function saveResults() {
+function saveGraph() {
 
 	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
@@ -200,8 +256,10 @@ function saveResults() {
 			throw err
 		
 		console.log('...' + fileName + ' saved')
-	})
+		next()
 		
+	})
+
 }
 
 /****************************

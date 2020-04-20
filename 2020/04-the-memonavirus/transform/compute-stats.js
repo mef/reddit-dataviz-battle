@@ -1,6 +1,7 @@
 const fs = require('fs')
 	, {DirectedGraph} = require('graphology')
-	, transformSteps = [importGraph, setCurve, saveCurve]
+
+const  transformSteps = [importGraph, setCurve, saveCurve]
 
 let graphFile
 	, graph = new DirectedGraph()
@@ -10,15 +11,54 @@ let graphFile
 
 /****************************
  *
+ * Utility function to convert a timestamp string to a date, truncated to the hour.
+ * 
+ * @param ts {string} timestamp string as formatted in reddit logs
+ *
+ *****************************/
+function getHourTs(ts) {
+	
+	// temp
+	//~return ts.substr(0,13)
+	
+	ts = new Date(ts)
+	
+	return new Date(ts.setMinutes(0, 0, 0)).valueOf()
+}
+
+/****************************
+ *
  * import graph export file in Graphology
  *
  *****************************/
 function importGraph() {
 	
+	console.log('Start graph import...')
+	
+	console.time('import')
+	
 	graph.import(graphFile)
+	
+	console.timeEnd('import')
+	
 	console.log('... import done')
 	
 	next()
+}
+
+/****************************
+ *
+ * Launch next transformation step
+ *
+ *****************************/
+function next() {
+	
+	if (currentTransformStep === transformSteps.length) {
+		console.log('all transformations performed')
+	}
+	else
+		transformSteps[currentTransformStep++]()
+		
 }
 
 /****************************
@@ -39,9 +79,12 @@ function saveCurve() {
 			throw err
 		
 		console.log('...' + fileName + ' saved')
+		
+		next()
 	})
 		
 }
+
 /****************************
  *
  * Build the infections curve
@@ -107,37 +150,6 @@ function setCurve() {
 	
 }
 
-/****************************
- *
- * Launch next transformation step
- *
- *****************************/
-function next() {
-	
-	if (currentTransformStep === transformSteps.length) {
-		console.log('all transformations performed')
-	}
-	else
-		transformSteps[currentTransformStep++]()
-		
-}
-
-/****************************
- *
- * Utility function to convert a timestamp string to a date, truncated to the hour.
- * 
- * @param ts {string} timestamp string as formatted in reddit logs
- *
- *****************************/
-function getHourTs(ts) {
-	
-	// temp
-	//~return ts.substr(0,13)
-	
-	ts = new Date(ts)
-	
-	return new Date(ts.setMinutes(0, 0, 0)).valueOf()
-}
 
 /****************************
  *
@@ -151,8 +163,7 @@ fs.readFile(__dirname + '/../data/staging/infection-graph.json', 'utf8', functio
 	graphFile = JSON.parse(file)
 
 	console.log(' ')
-	console.log('-----------------------------------------------------')	
-	console.log('Start graph import...')
+	console.log('-----------------------------------------------------')
 	
 	// launch first step
 	next()

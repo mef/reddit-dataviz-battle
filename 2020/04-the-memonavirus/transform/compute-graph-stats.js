@@ -10,6 +10,7 @@ const  transformSteps = [importGraph, setGraphLayout, saveGraph]
 let graphFile
 	, graph = new DirectedGraph()
 	, currentTransformStep = 0
+	, fileName = 'infection-subgraph.json'
 
 /****************************
  *
@@ -56,8 +57,6 @@ function saveGraph() {
 	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
 	console.log('Save graph export file...')
-	
-	let fileName = 'infection-graph.json'
 	
 	fs.writeFile(__dirname + '/../data/staging/' + fileName, JSON.stringify(graph.export()), function(err, res) {
 		if (err)
@@ -113,7 +112,7 @@ function setGraphLayout() {
 	
 	console.time('FA2')
 	
-	forceAtlas2.assign(graph, {iterations: 1000, settings: saneSettings})
+	forceAtlas2.assign(graph, {iterations: 100, settings: saneSettings})
 	
 	console.timeEnd('FA2')
 	
@@ -148,7 +147,8 @@ function setModularity() {
  * Start processing
  *
  *****************************/
-fs.readFile(__dirname + '/../data/staging/infection-graph.json', 'utf8', function(err, file) {
+//~fs.readFile(__dirname + '/../data/staging/infection-graph.json', 'utf8', function(err, file) {
+fs.readFile(__dirname + '/../data/staging/' + fileName, 'utf8', function(err, file) {
 	if (err)
 		throw err
 		

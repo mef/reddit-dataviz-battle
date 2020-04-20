@@ -6,9 +6,11 @@
   "scripts": {
     "start": "npm run extract && npm run transform",
     "extract": "node extract/index.js",
-    "transform": "npm run transform:build-graph && npm run transform:compute-stats",
+    "transform": "npm run transform:build-graph && npm run transform:compute-stats && npm run transform:compute-graph-stats && npm run transform:export-graph-image",
     "transform:build-graph": "node transform/build-graph.js",
-    "transform:compute-stats": "node transform/compute-stats.js"
+    "transform:compute-stats": "node transform/compute-stats.js",
+    "transform:compute-graph-stats": "node transform/compute-graph-stats.js",
+    "transform:export-graph-image": "node --max-old-space-size=8192 transform/export-graph-image.js"
   },
   "repository": {
     "type": "git",
@@ -28,8 +30,12 @@
   },
   "homepage": "https://github.com/mef/reddit-dataviz-battle#readme",
   "dependencies": {
+    "d3": "^5.15.1",
     "d3-fetch": "^1.1.2",
+    "d3-node": "^2.2.1",
     "graphology": "^0.17.1",
+    "graphology-communities-louvain": "^1.1.0",
+    "graphology-layout": "^0.2.0",
     "graphology-layout-forceatlas2": "^0.4.3",
     "tempy": "^0.5.0"
   }
