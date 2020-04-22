@@ -15,6 +15,8 @@ let files // array of log files from data source
 	, fileIndex = 0
 	, outFileIndex = 0
 	, edgeIndexMap = {}
+	, layoutIterationCount = d3.scaleLog()
+		.range([150, 15])
 
 let width = 1080 + 250
 	, height = 1080
@@ -23,7 +25,7 @@ let width = 1080 + 250
 		.range([nodeMargin, width - nodeMargin])
 	, y = d3.scaleLinear()
 		.range([nodeMargin, height - nodeMargin])
-	, radius = d3.scaleLinear()
+	, radius = d3.scaleSqrt()
 		.range([3, 30])
 	, minDegree = +Infinity
 	, maxDegree = 0
@@ -179,8 +181,8 @@ function addInfections(file, hourQuarter, callback) {
 						// record infected user node
 						graph.mergeNode(data[1], {
 							infectionAge: fileIndex
-							, x: Math.random() * 10
-							, y: Math.random() * 10
+							, x: Math.random() * 100
+							, y: Math.random() * 100
 						})
 						
 						if (data[3]) { // skip edge for patient0: infector is empty
@@ -189,8 +191,8 @@ function addInfections(file, hourQuarter, callback) {
 								// add infecting user node - missing from source - data quality issue
 								graph.mergeNode(data[3], {
 									infectionAge: fileIndex
-									, x: Math.random() * 10
-									, y: Math.random() * 10
+									, x: Math.random() * 100
+									, y: Math.random() * 100
 								})
 							}
 							
@@ -239,7 +241,7 @@ function exportImage(callback) {
 function formatData(callback) {
 	
 	//~console.log('Format data...')
-	console.log('graph characteristics', graph.order, graph.size)
+	//~console.log('graph characteristics', graph.order, graph.size)
 	//~console.log('graph', JSON.stringify(graph.export(), null, '   '))
 	
 	let res = {
@@ -321,6 +323,7 @@ function updateSVG(callback) {
 
 	x.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
 	y.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
+	
 	radius.domain(d3.extent(d3Graph.nodes, d => d.inDegree))
 	
 	color.domain([10, fileIndex])
@@ -377,6 +380,8 @@ function listFiles() {
 			files = stdout.split('\n')
 			
 			//~console.log('files', files)
+			
+			layoutIterationCount.domain([1, files.length])
 			
 			console.log('...all files identified')			
 
@@ -521,7 +526,9 @@ function updateMetrics(callback) {
 	
 	//~console.time('FA2')
 	
-	forceAtlas2.assign(graph, {iterations: 50, settings: FA2Settings})
+	console.log('iterations', Math.floor(layoutIterationCount(fileIndex+1)))
+	
+	forceAtlas2.assign(graph, {iterations: Math.floor(layoutIterationCount(fileIndex+1)), settings: FA2Settings})
 	
 	//~console.timeEnd('FA2')
 	
