@@ -354,7 +354,9 @@ function updateSVG(callback) {
 		  let dx = x(d3Graph.nodes[d.target].x) - y(d3Graph.nodes[d.source].x)
 			  , dy = y(d3Graph.nodes[d.target].y) - y(d3Graph.nodes[d.source].y)
 			  , dr = Math.sqrt(dx * dx + dy * dy)
-		  return 'M' + x(d3Graph.nodes[d.source].x) + ',' + y(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,1 ' + x(d3Graph.nodes[d.target].x) + ',' + y(d3Graph.nodes[d.target].y)
+			  , sweep = i%2 === 0 ? 0 : 1
+			  
+		  return 'M' + x(d3Graph.nodes[d.source].x) + ',' + y(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + x(d3Graph.nodes[d.target].x) + ',' + y(d3Graph.nodes[d.target].y)
 	    })
 	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : defaultColor)
 			  
