@@ -146,7 +146,7 @@ function addComments(file, callback) {
  * Add infection track to the graph based on logFile contents
  *
  *****************************/
-function addInfections(file, callback) {
+function addInfections(file, hourQuarter, callback) {
 	
 	//~console.log(fileIndex, file)
 
@@ -169,36 +169,35 @@ function addInfections(file, callback) {
 				if (data.length > 1) {
 					// skip empty lines
 					
-					
-					//~// record infected comment node
-					//~graph.mergeNodeAttributes(data[2], {
-						//~infectionAge: fileIndex
-					//~})
-					
-					// record infected user node
-					graph.mergeNode(data[1], {
-						infectionAge: fileIndex
-						, halfHour: Math.floor(new Date(data[0]).getMinutes() / 60 * 100 / 50)
-						, x: Math.random() * 10
-						, y: Math.random() * 10
-					})
-					
-					if (data[3]) { // skip edge for patient0: infector is empty
+					if (hourQuarter === Math.floor(new Date(data[0]).getMinutes() / 60 * 100 / 25)) {
 						
-						if ( !graph.hasNode(data[3]) ) {
-							// add infecting user node - missing from source - data quality issue
-							graph.mergeNode(data[3], {
-								infectionAge: fileIndex
-								, halfHour: Math.floor(new Date(data[0]).getMinutes() / 60 * 100 / 50)
-								, x: Math.random() * 10
-								, y: Math.random() * 10
-							})
+						//~// record infected comment node
+						//~graph.mergeNodeAttributes(data[2], {
+							//~infectionAge: fileIndex
+						//~})
+						
+						// record infected user node
+						graph.mergeNode(data[1], {
+							infectionAge: fileIndex
+							, x: Math.random() * 10
+							, y: Math.random() * 10
+						})
+						
+						if (data[3]) { // skip edge for patient0: infector is empty
+							
+							if ( !graph.hasNode(data[3]) ) {
+								// add infecting user node - missing from source - data quality issue
+								graph.mergeNode(data[3], {
+									infectionAge: fileIndex
+									, x: Math.random() * 10
+									, y: Math.random() * 10
+								})
+							}
+							
+							// record infectious edge
+							graph.mergeEdge(data[1], data[3])
 						}
-						
-						// record infectious edge
-						graph.mergeEdge(data[1], data[3])
 					}
-					
 					
 				}
 				
@@ -218,23 +217,12 @@ function exportImage(callback) {
 	
 	formatData(function(err, res) {
 
-	// generate 1 images per 30 min interval ( = 2 images per hourly log file
-	// layout computed only once per hourly file.
-			
-		updateSVG(0, function(err, res) {
+		updateSVG(function(err, res) {
 			
 			saveSVG(function(err, res) {
 						
-				updateSVG(1, function(err, res) {
-					
-					saveSVG(function(err, res) {
+				callback()
 						
-						callback()
-						
-					})
-					
-				})
-				
 			})
 			
 		})
@@ -270,7 +258,6 @@ if (!attributes.x)
 			key: node
 			, x: attributes.x
 			, y: attributes.y
-			, halfHour: attributes.halfHour
 			, inDegree: graph.inDegree(node)
 			, infectionAge: attributes.infectionAge
 		})
@@ -318,7 +305,7 @@ if (!attributes.x)
  * Generate SVG
  *
  *****************************/
-function updateSVG(currentIndex, callback) {
+function updateSVG(callback) {
 
 	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
@@ -329,20 +316,20 @@ function updateSVG(currentIndex, callback) {
 		, maxX = d3.max(d3Graph.nodes, function(d) { return d.x})
 		, maxY = d3.max(d3Graph.nodes, function(d) { return d.y})
 
+//~console.log( 'min max X', minX, maxX)
+//~console.log( 'min max Y', minY, maxY)
+
 	x.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
 	y.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
 	radius.domain(d3.extent(d3Graph.nodes, d => d.inDegree))
 	
 	color.domain([10, fileIndex])
 
-	//~let filteredNodes = d3Graph.nodes.filter(d => {console.log('filter', d.halfHour, currentIndex, d.halfHour <= currentIndex); return d.halfHour <= currentIndex})
-
 	let selection = node.selectAll('.node')
 		  .data(d3Graph.nodes, d => d.key)
 		  //~.data(d3Graph.nodes.slice(0, 100000), d => d.key)
 		  
 	selection.enter()
-	  .filter(d => d.halfHour <= currentIndex)
 	  .append('circle')
 		.attr('class', 'node')
 
@@ -356,7 +343,6 @@ function updateSVG(currentIndex, callback) {
 		.data(d3Graph.edges, d => d.key)
 	
 	selection.enter()
-	  .filter(d => d3Graph.nodes[d.source].halfHour <= currentIndex)
 	  .append('path')
 		.attr('class', 'link')
 
@@ -437,8 +423,10 @@ function updateGraph() {
 		next()
 	}
 	else  {
-		if (fileIndex % 134 === 0)
+		if (fileIndex % 134 === 0) {
+			console.log('..')
 			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
+		}
 		
 		//~addComments(files[fileIndex], function(err, res) {
 			//~if(err) {
@@ -450,7 +438,13 @@ function updateGraph() {
 				//~updateGraph()
 			//~}
 			//~else {
-				addInfections(files[fileIndex+1], function(err, res) {
+			
+			// TODO transform to recursive function.
+			// Iterate 16 times per log file at processing start (slowdown animation)
+			// Then switch to 4 times per log file
+			// values to be confirmed.
+			
+				addInfections(files[fileIndex+1], 0, function(err, res) {
 					if(err) {
 						// invalid file, skip
 			
@@ -465,11 +459,42 @@ function updateGraph() {
 							
 							exportImage(function(err, res) {
 								
-								fileIndex += 2
+								// second half hour
+								addInfections(files[fileIndex+1], 1, function(err, res) {
+									
+									updateMetrics(function(err, res) {
+										
+										exportImage(function(err, res) {
 								
-								// process next hour slot
-								updateGraph()
+											// second half hour
+											addInfections(files[fileIndex+1], 2, function(err, res) {
+												
+												updateMetrics(function(err, res) {
+													
+													exportImage(function(err, res) {
 								
+														// second half hour
+														addInfections(files[fileIndex+1], 3, function(err, res) {
+															
+															updateMetrics(function(err, res) {
+																
+																exportImage(function(err, res) {
+																	
+																	fileIndex += 2
+																	
+																	// process next hour slot
+																	updateGraph()
+																	
+																})
+															})
+														})
+														
+													})
+												})
+											})
+										})
+									})
+								})
 							})
 						})
 					}
