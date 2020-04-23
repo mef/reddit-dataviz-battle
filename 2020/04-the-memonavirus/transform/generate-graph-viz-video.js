@@ -5,7 +5,7 @@ const exec = require('child_process').exec
 	, {DirectedGraph} = require('graphology')
 	, forceAtlas2 = require('graphology-layout-forceatlas2')
 	
-const  transformSteps = [listFiles, updateGraph]
+const  transformSteps = [listFiles, processLogFile]
 
 let files // array of log files from data source
 	, repoPath // file path for data source repository
@@ -17,6 +17,8 @@ let files // array of log files from data source
 	, edgeIndexMap = {}
 	, layoutIterationCount = d3.scaleLog()
 		.range([150, 15])
+	, sliceCounter = d3.scaleQuantize() // number of times an hourly log file should be split to generate one frame, depending on how extraction progresses. This allows to slow down the animation at startup.
+		.range([8, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
 let width = 1080 + 250
 	, height = 1080
@@ -52,14 +54,8 @@ let link = chart.append('g')
 let node = chart.append('g')
 	.attr('id', 'nodes')
 
-
-
-
-
 // mp4 generation
 // ffmpeg -r 25 -f image2 -s 1920x1080 -i out-%04d.svg -vcodec libx264 -crf 25  -pix_fmt yuv420p test.mp4
-
-
 
 
 /****************************
@@ -146,68 +142,56 @@ function addComments(file, callback) {
 /****************************
  *
  * Add infection track to the graph based on logFile contents
+ * 
+ * @param {object} logFile array of log entries
+ * @param {function} callback
  *
  *****************************/
-function addInfections(file, hourQuarter, callback) {
+function addInfections(logFile, callback) {
 	
 	//~console.log(fileIndex, file)
-
-	fs.readFile(repoPath + '/' + file, 'utf8', function(err, content) {
-		if (err) {
-			if (err.errno === -2)
-				callback(err)
-			else
-				throw err
-		}
-		else {
-			let logFile = content.split('\n')
+	
+	// remove the last empty line of the file
+	//~logFile.pop()
+	
+	logFile.forEach( function(logLine) {
+		let data = logLine.split('\t')
+		
+		if (data.length > 1) {
+			// skip empty lines
+		
+			//~// record infected comment node
+			//~graph.mergeNodeAttributes(data[2], {
+				//~infectionAge: fileIndex
+			//~})
 			
-			// remove the last empty line of the file
-			//~logFile.pop()
+			// record infected user node
+			graph.mergeNode(data[1], {
+				infectionAge: fileIndex
+				, x: Math.random() * 100
+				, y: Math.random() * 100
+			})
 			
-			logFile.forEach( function(logLine) {
-				let data = logLine.split('\t')
+			if (data[3]) { // skip edge for patient0: infector is empty
 				
-				if (data.length > 1) {
-					// skip empty lines
-					
-					if (hourQuarter === Math.floor(new Date(data[0]).getMinutes() / 60 * 100 / 25)) {
-						
-						//~// record infected comment node
-						//~graph.mergeNodeAttributes(data[2], {
-							//~infectionAge: fileIndex
-						//~})
-						
-						// record infected user node
-						graph.mergeNode(data[1], {
-							infectionAge: fileIndex
-							, x: Math.random() * 100
-							, y: Math.random() * 100
-						})
-						
-						if (data[3]) { // skip edge for patient0: infector is empty
-							
-							if ( !graph.hasNode(data[3]) ) {
-								// add infecting user node - missing from source - data quality issue
-								graph.mergeNode(data[3], {
-									infectionAge: fileIndex
-									, x: Math.random() * 100
-									, y: Math.random() * 100
-								})
-							}
-							
-							// record infectious edge
-							graph.mergeEdge(data[1], data[3])
-						}
-					}
-					
+				if ( !graph.hasNode(data[3]) ) {
+					// add infecting user node - missing from source - data quality issue
+					graph.mergeNode(data[3], {
+						infectionAge: fileIndex
+						, x: Math.random() * 100
+						, y: Math.random() * 100
+					})
 				}
 				
-			})
-
-			callback()
+				// record infectious edge
+				graph.mergeEdge(data[1], data[3])
+			}
+			
 		}
+		
 	})
+
+	callback()
 }
 
 /****************************
@@ -304,6 +288,206 @@ if (!attributes.x)
 
 /****************************
  *
+ * Chunk data file to generate one image frame
+ * 
+ * Recursive function, splices input array and runs callback when no data is remaining.
+ * 
+ * @param {object} data array
+ * @param {number} recordCount - number of records to process inside a chunk
+ * @param {function} callback
+ *
+ *****************************/
+function generateFrames(data, recordCount, callback) {
+	
+	let dataSlice = data.splice(0, recordCount)
+	
+	if (!dataSlice.length)
+		callback()
+	else {
+	
+		addInfections(dataSlice, function(err, res) {
+			
+			updateMetrics(function(err, res) {
+				
+				exportImage(function(err, res) {
+
+					generateFrames(data, recordCount, callback)
+				})
+			})
+		})
+	}
+	
+}
+
+/****************************
+ *
+ * Lookup data source location 
+ *
+ *****************************/
+function listFiles() {
+	
+	// git log --grep=hourly --name-only --pretty="format:" --reverse --oneline  | grep log
+	exec('cd ' + repoPath + ' && git log --grep=hourly --name-only --pretty="format:" --reverse --oneline  | grep log', function(err, stdout, stderr) {
+		if (err || stderr)
+			throw err
+		else {
+			
+			files = stdout.split('\n')
+			
+			//~console.log('files', files)
+			
+			layoutIterationCount.domain([1, files.length])
+			
+			sliceCounter.domain([0, files.length-1])
+			
+			console.log('...all files identified')			
+
+			next()
+		}
+	})
+	
+}
+
+/****************************
+ *
+ * Launch next transformation step
+ *
+ *****************************/
+function next() {
+	
+	if (currentTransformStep === transformSteps.length) {
+		console.log('all transformations performed')
+	}
+	else
+		transformSteps[currentTransformStep++]()
+		
+}
+
+/****************************
+ *
+ * Build Generate one graph image per hour
+ *
+ *****************************/
+function processLogFile() {
+	
+	if (fileIndex === files.length) {
+	//~if (fileIndex === 64) {
+		console.log('... All log files processed')
+		next()
+	}
+	else  {
+		if (fileIndex % 134 === 0) {
+			console.log('..')
+			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
+		}
+		
+		// TODO move this in a readFile function
+	
+		readFile(files[fileIndex+1], function(err, file) {
+			if(err) {
+				// invalid file, skip
+	
+				fileIndex += 2
+				
+				// process next hour slot
+				processLogFile()
+			}
+			else {
+				
+				let logContent = file.split('\n')
+					, sliceCount = sliceCounter(fileIndex)
+
+				if (outFileIndex % 100 === 0)
+					console.log('sliceCount', sliceCount)
+				
+				generateFrames(logContent, Math.ceil(logContent.length / sliceCount), function(err, res) {
+
+					fileIndex += 2
+					
+					// process next hour slot
+					processLogFile()
+					
+				})
+			}
+		})
+	}
+}
+
+/****************************
+ *
+ * Read input log file
+ *
+ *****************************/
+function readFile(fileName, callback) {
+
+	fs.readFile(repoPath + '/' + fileName, 'utf8', function(err, content) {
+		if (err) {
+			if (err.errno === -2)
+				callback(err)
+			else
+				throw err
+		}
+		else {
+			callback(null, content)
+		}
+	})
+}
+
+/****************************
+ *
+ * Export graph to a SVG file
+ *
+ *****************************/
+function saveSVG(callback) {
+
+	//~console.log('Save graph image file...')
+	outFileIndex++
+	
+	let outputFileName = 'out-' + ('' + outFileIndex).padStart(4, '0') + '.svg'
+	
+	fs.writeFile(__dirname + '/../data/staging/svg/' + outputFileName, d3n.svgString(), function(err, res) {
+		if (err)
+			throw err
+		
+		if (outFileIndex % 100 === 0)
+			console.log('...' + outputFileName + ' saved')
+		
+		callback()
+		
+	})
+
+}
+
+/****************************
+ *
+ * compute graph statistics
+ *
+ *****************************/
+function updateMetrics(callback) {
+	
+	//~console.log('Compute layout...')
+	
+	const FA2Settings = forceAtlas2.inferSettings(graph)
+	
+	//~FA2Settings.adjustSizes = true
+	
+	//~console.log('FA2 settings', JSON.stringify(FA2Settings, null, ''))
+	
+	//~console.time('FA2')
+	
+	//~console.log('iterations', Math.floor(layoutIterationCount(fileIndex+1)))
+	
+	forceAtlas2.assign(graph, {iterations: Math.floor(layoutIterationCount(fileIndex+1)), settings: FA2Settings})
+	
+	//~console.timeEnd('FA2')
+	
+	//~console.log('... layout computation done')
+	
+	callback()
+}
+
+/****************************
+ *
  * Generate SVG
  *
  *****************************/
@@ -366,193 +550,7 @@ function updateSVG(callback) {
 
 }
 
-/****************************
- *
- * Lookup data source location 
- *
- *****************************/
-function listFiles() {
-	
-	// git log --grep=hourly --name-only --pretty="format:" --reverse --oneline  | grep log
-	exec('cd ' + repoPath + ' && git log --grep=hourly --name-only --pretty="format:" --reverse --oneline  | grep log', function(err, stdout, stderr) {
-		if (err || stderr)
-			throw err
-		else {
-			
-			files = stdout.split('\n')
-			
-			//~console.log('files', files)
-			
-			layoutIterationCount.domain([1, files.length])
-			
-			console.log('...all files identified')			
 
-			next()
-		}
-	})
-	
-}
-
-/****************************
- *
- * Export graph to a SVG file
- *
- *****************************/
-function saveSVG(callback) {
-
-	//~console.log('Save graph image file...')
-	outFileIndex++
-	
-	let outputFileName = 'out-' + ('' + outFileIndex).padStart(4, '0') + '.svg'
-	
-	fs.writeFile(__dirname + '/../data/staging/svg/' + outputFileName, d3n.svgString(), function(err, res) {
-		if (err)
-			throw err
-		
-		console.log('...' + outputFileName + ' saved')
-		
-		callback()
-		
-	})
-
-}
-
-/****************************
- *
- * Build Generate one graph image per hour
- *
- *****************************/
-function updateGraph() {
-	
-	if (fileIndex === files.length) {
-	//~if (fileIndex === 64) {
-		console.log('... All log files processed')
-		next()
-	}
-	else  {
-		if (fileIndex % 134 === 0) {
-			console.log('..')
-			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
-		}
-		
-		//~addComments(files[fileIndex], function(err, res) {
-			//~if(err) {
-				//~// invalid file, skip
-	
-				//~fileIndex += 2
-				
-				//~// process next hour slot
-				//~updateGraph()
-			//~}
-			//~else {
-			
-			// TODO transform to recursive function.
-			// Iterate 16 times per log file at processing start (slowdown animation)
-			// Then switch to 4 times per log file
-			// values to be confirmed.
-			
-				addInfections(files[fileIndex+1], 0, function(err, res) {
-					if(err) {
-						// invalid file, skip
-			
-						fileIndex += 2
-						
-						// process next hour slot
-						updateGraph()
-					}
-					else {
-						
-						updateMetrics(function(err, res) {
-							
-							exportImage(function(err, res) {
-								
-								// second half hour
-								addInfections(files[fileIndex+1], 1, function(err, res) {
-									
-									updateMetrics(function(err, res) {
-										
-										exportImage(function(err, res) {
-								
-											// second half hour
-											addInfections(files[fileIndex+1], 2, function(err, res) {
-												
-												updateMetrics(function(err, res) {
-													
-													exportImage(function(err, res) {
-								
-														// second half hour
-														addInfections(files[fileIndex+1], 3, function(err, res) {
-															
-															updateMetrics(function(err, res) {
-																
-																exportImage(function(err, res) {
-																	
-																	fileIndex += 2
-																	
-																	// process next hour slot
-																	updateGraph()
-																	
-																})
-															})
-														})
-														
-													})
-												})
-											})
-										})
-									})
-								})
-							})
-						})
-					}
-				})
-			//~}
-		//~})
-	}
-}
-
-/****************************
- *
- * compute graph statistics
- *
- *****************************/
-function updateMetrics(callback) {
-	
-	//~console.log('Compute layout...')
-	
-	const FA2Settings = forceAtlas2.inferSettings(graph)
-	
-	//~FA2Settings.adjustSizes = true
-	
-	//~console.log('FA2 settings', JSON.stringify(FA2Settings, null, ''))
-	
-	//~console.time('FA2')
-	
-	console.log('iterations', Math.floor(layoutIterationCount(fileIndex+1)))
-	
-	forceAtlas2.assign(graph, {iterations: Math.floor(layoutIterationCount(fileIndex+1)), settings: FA2Settings})
-	
-	//~console.timeEnd('FA2')
-	
-	//~console.log('... layout computation done')
-	
-	callback()
-}
-
-/****************************
- *
- * Launch next transformation step
- *
- *****************************/
-function next() {
-	
-	if (currentTransformStep === transformSteps.length) {
-		console.log('all transformations performed')
-	}
-	else
-		transformSteps[currentTransformStep++]()
-		
-}
 
 /****************************
  *
