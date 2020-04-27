@@ -19,12 +19,16 @@ let files // array of log files from data source
 		.range([150, 15])
 	, sliceCounter = d3.scaleQuantize() // number of times an hourly log file should be split to generate one frame, depending on how extraction progresses. This allows to slow down the animation at startup.
 		.range([8, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+	, metadata = {
+		infectionCount: 0
+		, timestamp: null
+	}
 
-let width = 1080 + 250
+let width = 1920
 	, height = 1080
 	, nodeMargin = 1
 	, x = d3.scaleLinear()
-		.range([nodeMargin, width - nodeMargin])
+		.range([nodeMargin, height - nodeMargin]) // square graph, use height
 	, y = d3.scaleLinear()
 		.range([nodeMargin, height - nodeMargin])
 	, radius = d3.scaleSqrt()
@@ -38,14 +42,30 @@ const color = d3.scaleLinear()
 	  .range([d3.rgb("#4F29FD"), d3.rgb('#FD29EA')])
 	, defaultColor = 'white'
 
-let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} .node {stroke-width: .5px; stroke: black;}'})
-	, chart = d3n.createSVG(width, height).append('g')
+let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} .node {stroke-width: .5px; stroke: black;} text {fill: white; font-size: 18px; font-family: Raleway;}'})
+	, svg = d3n.createSVG(width, height)
 
 // initialize chart 
-chart.append('rect')
+svg.append('rect')
 	.attr('width', '100%')
 	.attr('height', '100%')
 	.attr('fill', 'black')
+
+let metricsPanel = svg.append('g')
+
+let timestampDisplay = metricsPanel.append('text')
+  .attr('id', 'timestampDisplay')
+  .attr('x', '60px')
+  .attr('y', '60px')
+  
+let infectionCounter = metricsPanel.append('text')
+  .attr('id', 'infectionCount')
+  .attr('x', '60px')
+  .attr('y', '120px')
+
+
+let chart = svg.append('g')
+			  .attr('transform', 'translate(' + (width  - height) / 2 + ', 0)')
 	
 let link = chart.append('g')
 	.attr('id', 'links')
@@ -57,85 +77,73 @@ let node = chart.append('g')
 // mp4 generation
 // ffmpeg -r 25 -f image2 -s 1920x1080 -i out-%04d.svg -vcodec libx264 -crf 25  -pix_fmt yuv420p test.mp4
 
+// music: Rimsky-Korsakov: "Flight of the Bumble-Bee"
+// soundrack alternate Grieg – In the Hall of the Mountain King
 
 /****************************
  *
  * Add comment file contents to the graph
+ * 
+ * @param {object} logFile array of log entries
+ * @param {function} callback
  *
  *****************************/
-function addComments(file, callback) {
+function addComments(logFile, callback) {
 
-	fs.readFile(repoPath + '/' + file, 'utf8', function(err, content) {
-		if (err ) {
-			if (err.errno === -2)
-				callback(err)
-			else
-				throw err
-		}
-		else {
-			let logFile = content.split('\n')
+	logFile.forEach( function(logLine) {
+	
+		let data = logLine.split('\t')
+		
+		if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
 			
-			// remove the last empty line of the file
-			//~logFile.pop()
+			//~// add comment node
+			//~graph.mergeNode(data[2], {
+				//~from: data[1]
+				//~, x: Math.random()
+				//~, y: Math.random()
+				//~//, ts: data[0]
+			//~})
 			
-			logFile.forEach( function(logLine) {
-			
-				let data = logLine.split('\t')
-				
-				if (data.length > 1) {
-					
-					//~// add comment node
-					//~graph.mergeNode(data[2], {
-						//~from: data[1]
-						//~, x: Math.random()
-						//~, y: Math.random()
-						//~//, ts: data[0]
-					//~})
-					
-					// add user node
-					graph.mergeNode(data[1], {
-						x: Math.random() * 10
-						, y: Math.random() * 10
-						//, ts: data[0]
-					})
-					
-					// TODO mark infected if from patient 0 on day 1
-					
-					//~// parent comment node
-					//~graph.mergeNode(data[4], {
-						//~from: data[3]
-						//~, x: Math.random()
-						//~, y: Math.random()
-					//~})
-					
-					// parent user node
-					graph.mergeNode(data[3], {
-						x: Math.random() * 10
-						, y: Math.random() * 10
-					})
-					
-					//~// edge direction: child comment to parent.
-					//~graph.mergeEdge(data[2], data[4]
-					//~//, {
-						//~//, type: data[5] // C = commented on comment, S = commented on submission
-					//~//}
-					//~)
-					
-					// edge direction: commenting user to parent.
-					graph.mergeEdge(data[1], data[3]
-					//, {
-						//, type: data[5] // C = commented on comment, S = commented on submission
-					//}
-					)
-					
-				}
-				
+			// add user node
+			graph.mergeNode(data[1], {
+				x: Math.random() * 10
+				, y: Math.random() * 10
+				//, ts: data[0]
 			})
-			callback()
-
+			
+			// TODO mark infected if from patient 0 on day 1
+			
+			//~// parent comment node
+			//~graph.mergeNode(data[4], {
+				//~from: data[3]
+				//~, x: Math.random()
+				//~, y: Math.random()
+			//~})
+			
+			// parent user node
+			graph.mergeNode(data[3], {
+				x: Math.random() * 10
+				, y: Math.random() * 10
+			})
+			
+			//~// edge direction: child comment to parent.
+			//~graph.mergeEdge(data[2], data[4]
+			//~//, {
+				//~//, type: data[5] // C = commented on comment, S = commented on submission
+			//~//}
+			//~)
+			
+			// edge direction: commenting user to parent.
+			graph.mergeEdge(data[1], data[3]
+			//, {
+				//, type: data[5] // C = commented on comment, S = commented on submission
+			//}
+			)
+			
 		}
 		
 	})
+	callback()
 	
 }
 
@@ -159,6 +167,8 @@ function addInfections(logFile, callback) {
 		
 		if (data.length > 1) {
 			// skip empty lines
+		
+			metadata.infectionCount++
 		
 			//~// record infected comment node
 			//~graph.mergeNodeAttributes(data[2], {
@@ -190,6 +200,9 @@ function addInfections(logFile, callback) {
 		}
 		
 	})
+	
+	if (logFile[0].split('\t').length > 1)
+		metadata.timestamp = logFile[0].split('\t')[0]
 
 	callback()
 }
@@ -288,6 +301,22 @@ if (!attributes.x)
 
 /****************************
  *
+ * format timestamp
+ * 
+ * @param {string} timestamp
+ * 
+ * @return {string} formatted datetime
+ *
+ *****************************/
+function formatTimestamp(input) {
+	
+	let d = new Date(input)
+	
+	return d.toLocaleString([], {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})
+}
+
+/****************************
+ *
  * Chunk data file to generate one image frame
  * 
  * Recursive function, splices input array and runs callback when no data is remaining.
@@ -332,7 +361,7 @@ function listFiles() {
 			throw err
 		else {
 			
-			files = stdout.split('\n')
+			files = stdout.split('\n').map(path => path.replace('data', 'data/raw'))
 			
 			//~console.log('files', files)
 			
@@ -365,13 +394,13 @@ function next() {
 
 /****************************
  *
- * Build Generate one graph image per hour
+ * Generate one graph image per hour
  *
  *****************************/
 function processLogFile() {
 	
-	if (fileIndex === files.length) {
-	//~if (fileIndex === 64) {
+	//~if (fileIndex === files.length) {
+	if (fileIndex === 68) {
 		console.log('... All log files processed')
 		next()
 	}
@@ -381,35 +410,63 @@ function processLogFile() {
 			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
 		}
 		
-		// TODO move this in a readFile function
-	
-		readFile(files[fileIndex+1], function(err, file) {
-			if(err) {
-				// invalid file, skip
-	
-				fileIndex += 2
+		if (fileIndex < 68) {
+		// first 24 hours, also represent uninfectious comments in the graph
+			readFile(files[fileIndex], function(err, file) {
 				
-				// process next hour slot
-				processLogFile()
-			}
-			else {
-				
-				let logContent = file.split('\n')
-					, sliceCount = sliceCounter(fileIndex)
-
-				if (outFileIndex % 100 === 0)
-					console.log('sliceCount', sliceCount)
-				
-				generateFrames(logContent, Math.ceil(logContent.length / sliceCount), function(err, res) {
-
+					console.log('processing file', fileIndex, 'into outFile', outFileIndex)
+				if(err) {
+					// invalid file, skip
+		
 					fileIndex += 2
 					
 					// process next hour slot
 					processLogFile()
+				}
+				else {
 					
-				})
-			}
-		})
+					let logContent = file.split('\n')
+					
+					addComments(logContent, function(err, res) {
+						processInfectionFile()
+					})
+				}
+			})
+		}
+		else
+			processInfectionFile()
+		
+		
+		function processInfectionFile() {
+			
+			readFile(files[fileIndex+1], function(err, file) {
+				if(err) {
+					// invalid file, skip
+		
+					fileIndex += 2
+					
+					// process next hour slot
+					processLogFile()
+				}
+				else {
+					
+					let logContent = file.split('\n')
+						, sliceCount = sliceCounter(fileIndex)
+
+					if (outFileIndex % 100 === 0)
+						console.log('sliceCount', sliceCount)
+					
+					generateFrames(logContent, Math.ceil(logContent.length / sliceCount), function(err, res) {
+
+						fileIndex += 2
+						
+						// process next hour slot
+						processLogFile()
+						
+					})
+				}
+			})
+		}
 	}
 }
 
@@ -495,6 +552,12 @@ function updateSVG(callback) {
 
 	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
+	
+	// update metrics panel content
+	timestampDisplay.text(formatTimestamp(metadata.timestamp))
+	
+	infectionCounter.text(metadata.infectionCount)
+	
 	//~console.log('Update graph image...')
 		
 	const minX = d3.min(d3Graph.nodes, function(d) { return d.x})
@@ -524,7 +587,7 @@ function updateSVG(callback) {
 	selection.attr('r', (d, i) =>  { return radius(d.inDegree)})
 		    .attr('cx', d => x(d.x))
 		    .attr('cy', d => y(d.y))
-		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? 'red' : color(d.infectionAge) : defaultColor)
+		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? '#2ccedf' : color(d.infectionAge) : defaultColor)
 
 	selection = link.selectAll('.link')
 		.data(d3Graph.edges, d => d.key)
@@ -549,7 +612,6 @@ function updateSVG(callback) {
 	callback()
 
 }
-
 
 
 /****************************
