@@ -10,7 +10,8 @@
     "transform:build-graph": "node transform/build-graph.js",
     "transform:compute-stats": "node transform/compute-stats.js",
     "transform:compute-graph-stats": "node transform/compute-graph-stats.js",
-    "transform:export-graph-image": "node --max-old-space-size=8192 transform/export-graph-image.js"
+    "transform:export-graph-image": "node --max-old-space-size=8192 transform/export-graph-image.js",
+    "transform:generate-graph-viz-video": "node transform/generate-graph-viz-video.js"
   },
   "repository": {
     "type": "git",
