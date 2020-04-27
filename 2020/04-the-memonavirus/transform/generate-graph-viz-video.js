@@ -27,11 +27,11 @@ let files // array of log files from data source
 
 let width = 1920
 	, height = 1080
-	, nodeMargin = 1
+	, margin = 30
 	, x = d3.scaleLinear()
-		.range([nodeMargin, height - nodeMargin]) // square graph, use height
+		.range([margin, height - margin]) // square graph, use height
 	, y = d3.scaleLinear()
-		.range([nodeMargin, height - nodeMargin])
+		.range([margin, height - margin])
 	, radius = d3.scaleSqrt()
 		.range([3, 30])
 	, minDegree = +Infinity
@@ -40,7 +40,7 @@ let width = 1920
 const color = d3.scaleLinear()
 	  .interpolate(d3.interpolateHsl)
 	  //.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
-	  .range([d3.rgb('#2d29fd'),d3.rgb('#cf29fd')])
+	  .range([d3.rgb('#5229fd'),d3.rgb('#cf29fd')])
 	  //~const color = d3.scaleSequential(d3.interpolateViridis)
 	, defaultColor = '#83D34A'
 	, patient0Color = '#1018ef'
@@ -48,43 +48,61 @@ const color = d3.scaleLinear()
 let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} .node {stroke-width: .5px; stroke: black;} text {fill: white; font-size: 18px; font-family: Raleway;}'})
 	, svg = d3n.createSVG(width, height)
 
-// initialize chart 
+
+/****************************
+ *
+ * Initialize chart layout
+ *
+ *****************************/
+ 
+// Background
 svg.append('rect')
 	 .attr('width', '100%')
 	 .attr('height', '100%')
-	 .attr('fill', 'black')
+	 .attr('fill', '#222')
+	 .attr('stroke', 'red')
+	 .attr('stroke-width', '2px')
 
-let metricsPanel = svg.append('g')
+// Metrics panel
+let $metricsPanel = svg.append('g')
+	  .attr('transform', 'translate(' + margin + ', ' + margin + ')')
 
-let timestampDisplay = metricsPanel.append('text')
-      .attr('id', 'timestampDisplay')
-      .attr('x', '60px')
-      .attr('y', '60px')
+// Metrics panel background
+$metricsPanel.append('rect')
+	 .attr('width', () => (width  - height) / 2  - 2 * margin)
+	 .attr('height', () => height  - 2 * margin)
+	 .attr('fill', '#333')
+
+// Playback timestamp
+let $timestamp = $metricsPanel.append('text')
+      .attr('id', 'timestamp')
+      .attr('x', '20px')
+      .attr('y', '20px')
   
-let infectionRateCounter = metricsPanel.append('text')
-      .attr('id', 'infectionRateCounter')
-      .attr('x', '60px')
+let $infectionRate = $metricsPanel.append('text')
+      .attr('id', 'infectionRate')
+      .attr('x', '20px')
       .attr('y', '120px')
   
-let commentCounter = metricsPanel.append('text')
-      .attr('id', 'commentCounter')
-      .attr('x', '60px')
+let $commentCount = $metricsPanel.append('text')
+      .attr('id', 'commentCount')
+      .attr('x', '20px')
       .attr('y', '180px')
   
-let infectionCounter = metricsPanel.append('text')
+let $infectionCount = $metricsPanel.append('text')
       .attr('id', 'infectionCount')
-      .attr('x', '60px')
+      .attr('x', '20px')
       .attr('y', '240px')
 
 
-let chart = svg.append('g')
-			  .attr('transform', 'translate(' + (width  - height) / 2 + ', 0)')
+let $chart = svg.append('g')
+	  .attr('transform', 'translate(' + (width  - height) / 2 + ', 0)')
 	
-let link = chart.append('g')
+let $link = $chart.append('g')
 	.attr('id', 'links')
 	.style('opacity', .7)
 
-let node = chart.append('g')
+let $node = $chart.append('g')
 	.attr('id', 'nodes')
 
 // mp4 generation
@@ -236,9 +254,9 @@ function exportImage(callback) {
 		updateSVG(function(err, res) {
 			
 			if(fileIndex === 10) {
-				node.selectAll('.node')
+				$node.selectAll('.node')
 					.style('stroke', 'white')
-					.style('stroke-width', '2px')
+					.style('stroke-width', '1.5px')
 			}
 			
 			
@@ -602,9 +620,9 @@ function updateSVG(callback) {
 	
 	
 	// update metrics panel content
-	timestampDisplay.text(formatTimestamp(metadata.timestamp))
+	$timestamp.text(formatTimestamp(metadata.timestamp))
 	
-	infectionCounter.text(metadata.infectionCount)
+	$infectionCount.text(metadata.infectionCount)
 	
 	//~console.log('Update graph image...')
 		
@@ -623,35 +641,35 @@ function updateSVG(callback) {
 	
 	color.domain([10, fileIndex])
 
-	let selection = node.selectAll('.node')
+	let $nodeSelection = $node.selectAll('.node')
 		  .data(d3Graph.nodes, d => d.key)
 		  //~.data(d3Graph.nodes.slice(0, 100000), d => d.key)
 		  
-	selection.enter()
+	$nodeSelection.enter()
 	  .append('circle')
 		.attr('class', 'node')
 		
-	selection.exit()
+	$nodeSelection.exit()
 	  .remove()
 
 	// update selection
-	selection.attr('r', (d, i) =>  { return radius(d.inDegree)})
+	$nodeSelection.attr('r', (d, i) =>  { return radius(d.inDegree)})
 		    .attr('cx', d => x(d.x))
 		    .attr('cy', d => y(d.y))
 		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : defaultColor)
 		    
-	selection = link.selectAll('.link')
+	$linkSelection = $link.selectAll('.link')
 		.data(d3Graph.edges, d => d.key)
 	
-	selection.enter()
+	$linkSelection.enter()
 	  .append('path')
 		.attr('class', 'link')
 
-	selection.exit()
+	$linkSelection.exit()
 	  .remove()
 	  
 	// update selection
-	selection.attr('d', (d, i) => {
+	$linkSelection.attr('d', (d, i) => {
 		try {
 		  let dx = x(d3Graph.nodes[d.target].x) - y(d3Graph.nodes[d.source].x)
 			  , dy = y(d3Graph.nodes[d.target].y) - y(d3Graph.nodes[d.source].y)
