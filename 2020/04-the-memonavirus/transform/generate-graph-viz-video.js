@@ -44,6 +44,7 @@ let width = 1920
 	, saneColor = '#83D34A'
 	, patient0Color = '#1018ef'
 	, whiteLike = '#eee'
+	, bgFill = '#222'
 
 let  d3n = new D3Node({styles:' \
 		.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} \
@@ -68,7 +69,7 @@ let  d3n = new D3Node({styles:' \
 svg.append('rect')
 	 .attr('width', '100%')
 	 .attr('height', '100%')
-	 .attr('fill', '#222')
+	 .attr('fill', bgFill)
 	 .attr('stroke', 'red')
 	 .attr('stroke-width', '2px')
 
@@ -76,10 +77,15 @@ svg.append('rect')
 
 let sizes = {
 		metricsPanelWidth: (width  - height) / 2  - margin
+		, captionsPanelWidth: 2 * (width  - height) / 2  - margin
+		, metricsPanelHeight: (height - 2 * margin) * 1 / 3
+		, captionsPanelHeight: (height - 2 * margin) * 2 / 3
 	}
 	, positions = {
 		chartPanelX: (width  - height) / 2
 		, metricsPanelX: sizes.metricsPanelWidth + height + margin
+		, captionsPanelX: height + margin
+		, captionsPanelY: (height - 2 * margin) * 1 / 3 + 2 * margin
 		, textX: sizes.metricsPanelWidth / 3
 		, dx: 10
 		, textY: 2 * margin
@@ -87,25 +93,26 @@ let sizes = {
 	}
 
 
-console.log('----------------------')
-console.log(sizes)
-console.log(positions)
-console.log('----------------------')
+//~console.log('----------------------')
+//~console.log(sizes)
+//~console.log(positions)
+//~console.log('----------------------')
+
 
 // Metrics panel
-let $metricsPanel = svg.append('g')
+let $metrics = svg.append('g')
 	  .attr('transform', 'translate(' + positions.metricsPanelX + ', ' + margin + ')')
 
 // Metrics panel background
-$metricsPanel.append('rect')
+$metrics.append('rect')
 	 .attr('width', sizes.metricsPanelWidth)
-	 .attr('height', height  - 2 * margin)
+	 .attr('height', sizes.metricsPanelHeight)
 	 .attr('fill', 'none')
 	 .attr('stroke-width', '1px')
 	 .attr('stroke', '#333')
 
 // Playback timestamp
-let $timestamp = $metricsPanel.append('text')
+let $timestamp = $metrics.append('text')
       .attr('id', 'timestamp')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
@@ -113,13 +120,13 @@ let $timestamp = $metricsPanel.append('text')
       positions.textY += 2 * positions.textYDelta
   
   
-let $infectionRate = $metricsPanel.append('text')
+let $infectionRate = $metrics.append('text')
       .attr('id', 'infectionRate')
       .attr('class', 'metric text-large')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
       
-$metricsPanel.append('text')
+$metrics.append('text')
       .text('infection rate')
       .attr('class', 'text-large')
       .attr('x', positions.textX + 'px')
@@ -129,13 +136,13 @@ $metricsPanel.append('text')
       positions.textY += positions.textYDelta
 
     
-let $infectionCount = $metricsPanel.append('text')
+let $infectionCount = $metrics.append('text')
       .attr('id', 'infectionCount')
       .attr('class', 'metric')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
             
-$metricsPanel.append('text')
+$metrics.append('text')
       .text('infections')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
@@ -144,19 +151,21 @@ $metricsPanel.append('text')
       positions.textY += positions.textYDelta / 2
 
 
-let $commentCount = $metricsPanel.append('text')
+let $commentCount = $metrics.append('text')
       .attr('id', 'commentCount')
       .attr('class', 'metric')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
             
-$metricsPanel.append('text')
-      .text('comments')
+$metrics.append('text')
+      .text('Storytelling text goes here')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
       .attr('dx', positions.dx + 'px')
-  
 
+
+
+// Chart panel
 let $chart = svg.append('g')
 	  .attr('transform', 'translate(' + positions.chartPanelX + ', 0)')
 	
@@ -166,6 +175,41 @@ let $link = $chart.append('g')
 
 let $node = $chart.append('g')
 	.attr('id', 'nodes')
+
+
+
+
+// Captions panel
+
+// background overlay
+svg.append('g')
+	.attr('transform', 'translate(' + positions.captionsPanelX + ', ' + positions.captionsPanelY + ')')
+	.style('mix-blend-mode', 'normal')
+	.append('rect')
+	  .attr('width', sizes.captionsPanelWidth)
+	  .attr('height', sizes.captionsPanelHeight)
+	  .attr('fill', bgFill)
+	  .attr('opacity', .5)
+	  .attr('stroke', 'none')
+
+let $captions = svg.append('g')
+	  .attr('transform', 'translate(' + positions.captionsPanelX + ', ' + positions.captionsPanelY + ')')
+
+// Captions panel border
+$captions.append('rect')
+	 .attr('width', sizes.captionsPanelWidth)
+	 .attr('height', sizes.captionsPanelHeight)
+	 .attr('fill', 'none')
+	 .attr('stroke-width', '1px')
+	 .attr('stroke', '#333')
+	 
+$captions.append('text')
+      .text('comments')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      .attr('dx', positions.dx + 'px')
+	 
+	 
 
 // mp4 generation
 // ffmpeg -r 25 -f image2 -s 1920x1080 -i out-%04d.svg -vcodec libx264 -crf 25  -pix_fmt yuv420p test.mp4
@@ -529,13 +573,13 @@ function next() {
  *****************************/
 function processLogFile() {
 	
-	//~if (fileIndex === files.length) {
-	if (fileIndex === 100) {
+	if (fileIndex === files.length) {
+	//~if (fileIndex === 100) {
 		console.log('... All log files processed')
 		next()
 	}
 	else  {
-		if (fileIndex % 134 === 0) {
+		if (fileIndex % 40 === 0) {
 			console.log('..')
 			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
 		}
