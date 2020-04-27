@@ -25,19 +25,15 @@ let width = 6500
 		.range([3, 60])
 	, minDegree = +Infinity
 	, maxDegree = 0
-	//~, color = d3.scaleOrdinal(d3.schemeCategory10)
-	
 
 const infectionStartDate = new Date('2020-03-20 20:00')
-	//~, color = d3.scaleSequential(d3.interpolateYlOrBr) // color by number of days since outbreak start
 	, color = d3
 	  .scaleLinear()
-	  .domain([0, 1])
 	  .interpolate(d3.interpolateHsl)
 	  .range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
 	, defaultColor = 'white'
 
-let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 1; stroke-opacity: .3; mix-blend-mode: multiply;}'})
+let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity: .3; mix-blend-mode: multiply;}'})
 	, chart = d3n.createSVG(width, height).append('g')
 
 
@@ -60,39 +56,49 @@ function formatData() {
 	
 	graph.forEachNode((node, attributes) => {
 
-		res.nodes.push({
-			key: node
-			, x: attributes.x
-			, y: attributes.y
-			, inDegree: graph.inDegree(node)
-			//~, community: attributes.community
-			, infectionDay: attributes.infection_ts? Math.floor((new Date(attributes.infection_ts).getTime() - infectionStartDate.getTime()) / (1000 * 3600 * 24)) : null
-			//~, isInfected: 
-			// TODO add red stroke when the node is infected
-		})
+		//~if (!attributes.infection_ts)
+			//~console.log('no infection timestamp', node)
 		
-		if (!attributes.infection_ts)
-			console.log('no infection timestamp', node)
+		if (new Date(attributes.infection_ts) <= new Date('2020-03-25 20:00')) {
+			res.nodes.push({
+				key: node
+				, x: attributes.x
+				, y: attributes.y
+				, inDegree: graph.inDegree(node)
+				//~, community: attributes.community
+				, infectionDay: attributes.infection_ts? Math.floor((new Date(attributes.infection_ts).getTime() - infectionStartDate.getTime()) / (1000 * 3600 * 24)) : null
+				//~, isInfected: 
+				// TODO add red stroke when the node is infected
+			})
+		}
+		
 		
 	})
 	
 	graph.forEachEdge(function(edge, attributes, source, target) {
-		let sourceIndex = res.nodes.findIndex(function(node, index){
-			return node.key === source
-		})
-		let targetIndex = res.nodes.findIndex(function(node, index){
-			return node.key === target
-		})
 		
-		res.edges.push({
-			key: source + '-' + target
-			, source: sourceIndex
-			, target: targetIndex
-			, infectionDay: attributes.infection_ts? Math.floor((new Date(attributes.infection_ts).getTime() - infectionStartDate.getTime()) / (1000 * 3600 * 24)) : null
-			//~//, color: 
-			// TODO switch color according to whether the edge carried infection
-		})
+		if (new Date(attributes.infection_ts) <= new Date('2020-03-25 20:00')) {
+			let sourceIndex = res.nodes.findIndex(function(node, index){
+				return node.key === source
+			})
+			let targetIndex = res.nodes.findIndex(function(node, index){
+				return node.key === target
+			})
+			
+			if (sourceIndex !== -1 && targetIndex !== -1 ) {
+				res.edges.push({
+					key: source + '-' + target
+					, source: sourceIndex
+					, target: targetIndex
+					, infectionDay: attributes.infection_ts? Math.floor((new Date(attributes.infection_ts).getTime() - infectionStartDate.getTime()) / (1000 * 3600 * 24)) : null
+					//~//, color: 
+					// TODO switch color according to whether the edge carried infection
+				})
+			}
+		}
 	})
+	
+	console.log('filtered results', res.nodes.length, res.edges.length)
 	
 	graphData = res
 
@@ -128,13 +134,13 @@ function generateGraphImage() {
 		, minY = d3.min(graphData.nodes, function(d) { return d.y})
 		, maxX = d3.max(graphData.nodes, function(d) { return d.x})
 		, maxY = d3.max(graphData.nodes, function(d) { return d.y})
+		, lastInfectionDate = d3.max(graphData.nodes, function(d) { return d.infectionDay})
 
 	x.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
 	y.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
 	radius.domain(d3.extent(graphData.nodes, d => d.inDegree))
 	
-	color.domain([ Math.floor((new Date().getTime() - infectionStartDate.getTime()) / (1000 * 3600 * 24)) - 8 , 0])
-	//color domain is offset in order to to get too light colors
+	color.domain([lastInfectionDate, 0])
 
 	node.selectAll('.node')
 		  .data(graphData.nodes, d => d.key)
@@ -154,11 +160,9 @@ function generateGraphImage() {
 		.append('path')
 			  .attr('class', 'link')
 			  .attr('d', (d, i) => {
-
 				  let dx = x(graphData.nodes[d.target].x) - y(graphData.nodes[d.source].x)
 					  , dy = y(graphData.nodes[d.target].y) - y(graphData.nodes[d.source].y)
 					  , dr = Math.sqrt(dx * dx + dy * dy)
-				  
 				  return 'M' + x(graphData.nodes[d.source].x) + ',' + y(graphData.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,1 ' + x(graphData.nodes[d.target].x) + ',' + y(graphData.nodes[d.target].y)
 			  })
 			  //~.style('stroke',  d => color(graphData.nodes[d.source].community))
