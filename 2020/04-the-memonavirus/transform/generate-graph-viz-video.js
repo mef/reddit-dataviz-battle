@@ -40,7 +40,7 @@ let width = 1920
 const color = d3.scaleLinear()
 	  .interpolate(d3.interpolateHsl)
 	  //.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
-	  .range([d3.rgb('#2d29fd'),d3.rgb('#f129fd')])
+	  .range([d3.rgb('#2d29fd'),d3.rgb('#cf29fd')])
 	  //~const color = d3.scaleSequential(d3.interpolateViridis)
 	, defaultColor = '#83D34A'
 	, patient0Color = '#1018ef'
@@ -50,21 +50,31 @@ let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity
 
 // initialize chart 
 svg.append('rect')
-	.attr('width', '100%')
-	.attr('height', '100%')
-	.attr('fill', 'black')
+	 .attr('width', '100%')
+	 .attr('height', '100%')
+	 .attr('fill', 'black')
 
 let metricsPanel = svg.append('g')
 
 let timestampDisplay = metricsPanel.append('text')
-  .attr('id', 'timestampDisplay')
-  .attr('x', '60px')
-  .attr('y', '60px')
+      .attr('id', 'timestampDisplay')
+      .attr('x', '60px')
+      .attr('y', '60px')
+  
+let infectionRateCounter = metricsPanel.append('text')
+      .attr('id', 'infectionRateCounter')
+      .attr('x', '60px')
+      .attr('y', '120px')
+  
+let commentCounter = metricsPanel.append('text')
+      .attr('id', 'commentCounter')
+      .attr('x', '60px')
+      .attr('y', '180px')
   
 let infectionCounter = metricsPanel.append('text')
-  .attr('id', 'infectionCount')
-  .attr('x', '60px')
-  .attr('y', '120px')
+      .attr('id', 'infectionCount')
+      .attr('x', '60px')
+      .attr('y', '240px')
 
 
 let chart = svg.append('g')
@@ -224,6 +234,13 @@ function exportImage(callback) {
 	formatData(function(err, res) {
 
 		updateSVG(function(err, res) {
+			
+			if(fileIndex === 10) {
+				node.selectAll('.node')
+					.style('stroke', 'white')
+					.style('stroke-width', '2px')
+			}
+			
 			
 			saveSVG(function(err, res) {
 						
@@ -622,7 +639,7 @@ function updateSVG(callback) {
 		    .attr('cx', d => x(d.x))
 		    .attr('cy', d => y(d.y))
 		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : defaultColor)
-
+		    
 	selection = link.selectAll('.link')
 		.data(d3Graph.edges, d => d.key)
 	
