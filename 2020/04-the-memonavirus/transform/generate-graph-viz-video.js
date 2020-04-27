@@ -196,7 +196,7 @@ function addComments(logFile, callback) {
 			let data = logLine.split('\t')
 			
 			if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
-			// line is not empty, edge is complete (not patient 0 line) and the comment's parent is infected.
+			// line is not empty, the comment's parent ispresent in the graph and  infected.
 				
 				//~// add comment node
 				//~graph.mergeNode(data[2], {
