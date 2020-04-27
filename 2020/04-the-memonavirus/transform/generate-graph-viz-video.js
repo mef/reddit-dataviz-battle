@@ -36,16 +36,24 @@ let width = 1920
 		.range([3, 30])
 	, minDegree = +Infinity
 	, maxDegree = 0
-
-const color = d3.scaleLinear()
+	, color = d3.scaleLinear()
 	  .interpolate(d3.interpolateHsl)
 	  //.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
 	  .range([d3.rgb('#5229fd'),d3.rgb('#cf29fd')])
 	  //~const color = d3.scaleSequential(d3.interpolateViridis)
-	, defaultColor = '#83D34A'
+	, saneColor = '#83D34A'
 	, patient0Color = '#1018ef'
 
-let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} .node {stroke-width: .5px; stroke: black;} text {fill: white; font-size: 18px; font-family: Raleway;}'})
+let  d3n = new D3Node({styles:' \
+		.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} \
+		.node {stroke-width: .5px; stroke: black;} \
+		text {fill: white; font-size: 20px; font-family: Raleway;} \
+		.metric {text-anchor: end;} \
+		.metric-large {font-size: 32px;} \
+		#infectionRate {fill: red;} \
+		#infectionCount {fill: #cf29fd;} \
+		#commentCount {fill: ' + saneColor + ';} \
+	'})
 	, svg = d3n.createSVG(width, height)
 
 
@@ -81,17 +89,20 @@ let $timestamp = $metricsPanel.append('text')
   
 let $infectionRate = $metricsPanel.append('text')
       .attr('id', 'infectionRate')
-      .attr('x', '20px')
+      .attr('class', 'metric metric-large')
+      .attr('x', '60px')
       .attr('y', '120px')
   
 let $commentCount = $metricsPanel.append('text')
       .attr('id', 'commentCount')
-      .attr('x', '20px')
+      .attr('class', 'metric')
+      .attr('x', '60px')
       .attr('y', '180px')
   
 let $infectionCount = $metricsPanel.append('text')
       .attr('id', 'infectionCount')
-      .attr('x', '20px')
+      .attr('class', 'metric')
+      .attr('x', '60px')
       .attr('y', '240px')
 
 
@@ -125,59 +136,64 @@ let $node = $chart.append('g')
  *****************************/
 function addComments(logFile, callback) {
 
-	logFile.forEach( function(logLine) {
+	// increment comments counter
+	metadata.commentCount += logFile.length
 	
-		let data = logLine.split('\t')
-		
-		if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
+	if (fileIndex < 62) {
+	// first 24 hours, also represent uninfectious comments in the graph
+
+		logFile.forEach( function(logLine) {
+			let data = logLine.split('\t')
 			
-			//~// add comment node
-			//~graph.mergeNode(data[2], {
-				//~from: data[1]
-				//~, x: Math.random()
-				//~, y: Math.random()
-				//~//, ts: data[0]
-			//~})
-			
-			// add user node
-			graph.mergeNode(data[1], {
-				x: Math.random() * 10
-				, y: Math.random() * 10
-				//, ts: data[0]
-			})
-			
-			// TODO mark infected if from patient 0 on day 1
-			
-			//~// parent comment node
-			//~graph.mergeNode(data[4], {
-				//~from: data[3]
-				//~, x: Math.random()
-				//~, y: Math.random()
-			//~})
-			
-			// parent user node
-			graph.mergeNode(data[3], {
-				x: Math.random() * 10
-				, y: Math.random() * 10
-			})
-			
-			//~// edge direction: child comment to parent.
-			//~graph.mergeEdge(data[2], data[4]
-			//~//, {
-				//~//, type: data[5] // C = commented on comment, S = commented on submission
-			//~//}
-			//~)
-			
-			// edge direction: commenting user to parent.
-			graph.mergeEdge(data[1], data[3]
-			//, {
-				//, type: data[5] // C = commented on comment, S = commented on submission
-			//}
-			)
-			
-		}
-		
-	})
+			if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
+			// line is not empty, edge is complete (not patient 0 line) and the comment's parent is infected.
+				
+				//~// add comment node
+				//~graph.mergeNode(data[2], {
+					//~from: data[1]
+					//~, x: Math.random()
+					//~, y: Math.random()
+					//~//, ts: data[0]
+				//~})
+				
+				// add user node
+				graph.mergeNode(data[1], {
+					x: Math.random() * 10
+					, y: Math.random() * 10
+					//, ts: data[0]
+				})
+				
+				//~// parent comment node
+				//~graph.mergeNode(data[4], {
+					//~from: data[3]
+					//~, x: Math.random()
+					//~, y: Math.random()
+				//~})
+				
+				// parent user node
+				graph.mergeNode(data[3], {
+					x: Math.random() * 10
+					, y: Math.random() * 10
+				})
+				
+				//~// edge direction: child comment to parent.
+				//~graph.mergeEdge(data[2], data[4]
+				//~//, {
+					//~//, type: data[5] // C = commented on comment, S = commented on submission
+				//~//}
+				//~)
+				
+				// edge direction: commenting user to parent.
+				graph.mergeEdge(data[1], data[3]
+				//, {
+					//, type: data[5] // C = commented on comment, S = commented on submission
+				//}
+				)
+				
+			}
+		})
+	}
+
 	callback()
 	
 }
@@ -282,7 +298,7 @@ function filterComments() {
 	graph.forEachNode((node, attributes) => {
 		
 		if (typeof attributes.infectionAge === 'undefined') {
-			console.log('dropNode', node)
+			//~console.log('dropNode', node)
 			graph.dropNode(node)
 		}
 	})
@@ -477,63 +493,75 @@ console.log('processing file', fileIndex, 'into outFile', outFileIndex)
 		if (fileIndex === 62)
 			filterComments()
 		
-		if (fileIndex < 62) {
-		// first 24 hours, also represent uninfectious comments in the graph
-			readFile(files[fileIndex], function(err, file) {
-				
-				if(err) {
-					// invalid file, skip
-		
-					fileIndex += 2
-					
-					// process next hour slot
-					processLogFile()
-				}
-				else {
-					
-					let logContent = file.split('\n')
-					
-					addComments(logContent, function(err, res) {
-						processInfectionFile()
-					})
-				}
-			})
-		}
-		else
-			processInfectionFile()
-		
-		
-		function processInfectionFile() {
+		readFile(files[fileIndex], function(err, file) {
 			
-			readFile(files[fileIndex+1], function(err, file) {
-				if(err) {
-					// invalid file, skip
+			if(err) {
+				// invalid file, skip
+	
+				fileIndex += 2
+				
+				// process next hour slot
+				processLogFile()
+			}
+			else {
+				
+				let logContent = file.split('\n')
+				
+				addComments(logContent, function(err, res) {
+					
+					if (fileIndex < 62) {
+					// Within day 1
+					// Generate a frame with the new uninfected nodes
+						updateMetrics(function(err, res) {
+							
+							exportImage(function(err, res) {
+								processInfectionFile()
+
+							})
+						})
+					}
+					else
+						processInfectionFile()
+				})
+			}
+		})
 		
-					fileIndex += 2
-					
-					// process next hour slot
-					processLogFile()
-				}
-				else {
-					
-					let logContent = file.split('\n')
-						, sliceCount = sliceCounter(fileIndex)
+	}
+}
 
-					if (outFileIndex % 100 === 0)
-						console.log('sliceCount', sliceCount)
-					
-					generateFrames(logContent, Math.ceil(logContent.length / sliceCount), function(err, res) {
+/****************************
+ *
+ * Process infection log files and generate relevant frames
+ *
+ *****************************/
+function processInfectionFile() {
+	readFile(files[fileIndex+1], function(err, file) {
+		if(err) {
+			// invalid file, skip
 
-						fileIndex += 2
-						
-						// process next hour slot
-						processLogFile()
-						
-					})
-				}
+			fileIndex += 2
+			
+			// process next hour slot
+			processLogFile()
+		}
+		else {
+			
+			let logContent = file.split('\n')
+				, sliceCount = sliceCounter(fileIndex)
+
+			if (outFileIndex % 100 === 0)
+				console.log('sliceCount', sliceCount)
+			
+			generateFrames(logContent, Math.ceil(logContent.length / sliceCount), function(err, res) {
+
+				fileIndex += 2
+				
+				// process next hour slot
+				processLogFile()
+				
 			})
 		}
-	}
+	})
 }
 
 /****************************
@@ -623,6 +651,8 @@ function updateSVG(callback) {
 	$timestamp.text(formatTimestamp(metadata.timestamp))
 	
 	$infectionCount.text(metadata.infectionCount)
+	$commentCount.text(metadata.commentCount)
+	$infectionRate.text((metadata.infectionCount / metadata.commentCount * 100).toFixed(2) + '%')
 	
 	//~console.log('Update graph image...')
 		
@@ -656,7 +686,7 @@ function updateSVG(callback) {
 	$nodeSelection.attr('r', (d, i) =>  { return radius(d.inDegree)})
 		    .attr('cx', d => x(d.x))
 		    .attr('cy', d => y(d.y))
-		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : defaultColor)
+		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : saneColor)
 		    
 	$linkSelection = $link.selectAll('.link')
 		.data(d3Graph.edges, d => d.key)
@@ -684,7 +714,7 @@ function updateSVG(callback) {
 			throw e
 		  }
 	    })
-	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : defaultColor)
+	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
 			  
 	//~console.log('... done')
 	
