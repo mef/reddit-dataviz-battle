@@ -81,7 +81,7 @@ let sizes = {
 		chartPanelX: (width  - height) / 2
 		, metricsPanelX: sizes.metricsPanelWidth + height + margin
 		, textX: sizes.metricsPanelWidth / 3
-		, dx: 5
+		, dx: 10
 		, textY: 2 * margin
 		, textYDelta: 60
 	}
@@ -112,6 +112,7 @@ let $timestamp = $metricsPanel.append('text')
       
       positions.textY += 2 * positions.textYDelta
   
+  
 let $infectionRate = $metricsPanel.append('text')
       .attr('id', 'infectionRate')
       .attr('class', 'metric text-large')
@@ -125,24 +126,9 @@ $metricsPanel.append('text')
       .attr('y', positions.textY + 'px')
       .attr('dx', positions.dx + 'px')
       
-      
       positions.textY += positions.textYDelta
-  
-let $commentCount = $metricsPanel.append('text')
-      .attr('id', 'commentCount')
-      .attr('class', 'metric')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-            
-$metricsPanel.append('text')
-      .text('comments')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      .attr('dx', positions.dx + 'px')
-      
-      
-      positions.textY += positions.textYDelta / 2
-  
+
+    
 let $infectionCount = $metricsPanel.append('text')
       .attr('id', 'infectionCount')
       .attr('class', 'metric')
@@ -154,7 +140,22 @@ $metricsPanel.append('text')
       .attr('x', positions.textX + 'px')
       .attr('y', positions.textY + 'px')
       .attr('dx', positions.dx + 'px')
+    
+      positions.textY += positions.textYDelta / 2
 
+
+let $commentCount = $metricsPanel.append('text')
+      .attr('id', 'commentCount')
+      .attr('class', 'metric')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+            
+$metricsPanel.append('text')
+      .text('comments')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      .attr('dx', positions.dx + 'px')
+  
 
 let $chart = svg.append('g')
 	  .attr('transform', 'translate(' + positions.chartPanelX + ', 0)')
@@ -195,6 +196,7 @@ function addComments(logFile, callback) {
 		logFile.forEach( function(logLine) {
 			let data = logLine.split('\t')
 			
+			//~if (data.length > 1 ) {
 			if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
 			// line is not empty, the comment's parent ispresent in the graph and  infected.
 				
@@ -700,9 +702,9 @@ function updateSVG(callback) {
 	// update metrics panel content
 	$timestamp.text(formatTimestamp(metadata.timestamp))
 	
-	$infectionCount.text(metadata.infectionCount)
-	$commentCount.text(metadata.commentCount)
-	$infectionRate.text((metadata.infectionCount / metadata.commentCount * 100).toFixed(2) + '%')
+	$infectionCount.text(d3.format(",.0d")(metadata.infectionCount))
+	$commentCount.text(d3.format(",.0d")(metadata.commentCount))
+	$infectionRate.text(d3.format(".2%")(metadata.infectionCount / metadata.commentCount))
 	
 	//~console.log('Update graph image...')
 		
