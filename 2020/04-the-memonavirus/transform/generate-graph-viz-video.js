@@ -232,6 +232,27 @@ function exportImage(callback) {
 
 /****************************
  *
+ * Filter comments out of the graph
+ *
+ *****************************/
+function filterComments() {
+	
+	graph.forEachNode((node, attributes) => {
+		
+		if (typeof attributes.infectionAge === 'undefined') {
+			console.log('dropNode', node)
+			graph.dropNode(node)
+		}
+	})
+	
+	// reset edgeIndexMap
+	edgeIndexMap = {}
+
+	console.log('done filtering comments')
+}
+
+/****************************
+ *
  * convert data to a format suitable for consumption by d3
  *
  *****************************/
@@ -246,7 +267,7 @@ function formatData(callback) {
 			, edges: []
 		}
 	
-	
+console.log('format data for d3')
 	graph.forEachNode((node, attributes) => {
 
 // temp data quality check
@@ -312,7 +333,7 @@ function formatTimestamp(input) {
 	
 	let d = new Date(input)
 	
-	return d.toLocaleString([], {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})
+	return d.toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})
 }
 
 /****************************
@@ -400,7 +421,7 @@ function next() {
 function processLogFile() {
 	
 	//~if (fileIndex === files.length) {
-	if (fileIndex === 68) {
+	if (fileIndex === 100) {
 		console.log('... All log files processed')
 		next()
 	}
@@ -410,11 +431,15 @@ function processLogFile() {
 			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
 		}
 		
-		if (fileIndex < 68) {
+console.log('processing file', fileIndex, 'into outFile', outFileIndex)
+		// Cleanup comments out of graph when processing first file after 24h
+		if (fileIndex === 62)
+			filterComments()
+		
+		if (fileIndex < 62) {
 		// first 24 hours, also represent uninfectious comments in the graph
 			readFile(files[fileIndex], function(err, file) {
 				
-					console.log('processing file', fileIndex, 'into outFile', outFileIndex)
 				if(err) {
 					// invalid file, skip
 		
@@ -582,6 +607,9 @@ function updateSVG(callback) {
 	selection.enter()
 	  .append('circle')
 		.attr('class', 'node')
+		
+	selection.exit()
+	  .remove()
 
 	// update selection
 	selection.attr('r', (d, i) =>  { return radius(d.inDegree)})
@@ -596,14 +624,24 @@ function updateSVG(callback) {
 	  .append('path')
 		.attr('class', 'link')
 
+	selection.exit()
+	  .remove()
+	  
 	// update selection
 	selection.attr('d', (d, i) => {
+		try {
 		  let dx = x(d3Graph.nodes[d.target].x) - y(d3Graph.nodes[d.source].x)
 			  , dy = y(d3Graph.nodes[d.target].y) - y(d3Graph.nodes[d.source].y)
 			  , dr = Math.sqrt(dx * dx + dy * dy)
 			  , sweep = i%2 === 0 ? 0 : 1
 			  
 		  return 'M' + x(d3Graph.nodes[d.source].x) + ',' + y(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + x(d3Graph.nodes[d.target].x) + ',' + y(d3Graph.nodes[d.target].y)
+		  
+		  
+		  }catch(e) {
+			console.log('missing source', d.source)  
+			throw e
+		  }
 	    })
 	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : defaultColor)
 			  
