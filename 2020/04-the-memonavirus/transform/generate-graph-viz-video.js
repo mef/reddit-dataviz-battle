@@ -43,13 +43,14 @@ let width = 1920
 	  //~const color = d3.scaleSequential(d3.interpolateViridis)
 	, saneColor = '#83D34A'
 	, patient0Color = '#1018ef'
+	, whiteLike = '#eee'
 
 let  d3n = new D3Node({styles:' \
 		.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} \
 		.node {stroke-width: .5px; stroke: black;} \
-		text {fill: white; font-size: 20px; font-family: Raleway;} \
+		text {fill: ' + whiteLike + '; font-size: 20px; font-family: Raleway; } \
 		.metric {text-anchor: end;} \
-		.metric-large {font-size: 32px;} \
+		.text-large {font-size: 32px;} \
 		#infectionRate {fill: red;} \
 		#infectionCount {fill: #cf29fd;} \
 		#commentCount {fill: ' + saneColor + ';} \
@@ -71,43 +72,92 @@ svg.append('rect')
 	 .attr('stroke', 'red')
 	 .attr('stroke-width', '2px')
 
+// dimension measures
+
+let sizes = {
+		metricsPanelWidth: (width  - height) / 2  - margin
+	}
+	, positions = {
+		chartPanelX: (width  - height) / 2
+		, metricsPanelX: sizes.metricsPanelWidth + height + margin
+		, textX: sizes.metricsPanelWidth / 3
+		, dx: 5
+		, textY: 2 * margin
+		, textYDelta: 60
+	}
+
+
+console.log('----------------------')
+console.log(sizes)
+console.log(positions)
+console.log('----------------------')
+
 // Metrics panel
 let $metricsPanel = svg.append('g')
-	  .attr('transform', 'translate(' + margin + ', ' + margin + ')')
+	  .attr('transform', 'translate(' + positions.metricsPanelX + ', ' + margin + ')')
 
 // Metrics panel background
 $metricsPanel.append('rect')
-	 .attr('width', () => (width  - height) / 2  - 2 * margin)
-	 .attr('height', () => height  - 2 * margin)
-	 .attr('fill', '#333')
+	 .attr('width', sizes.metricsPanelWidth)
+	 .attr('height', height  - 2 * margin)
+	 .attr('fill', 'none')
+	 .attr('stroke-width', '1px')
+	 .attr('stroke', '#333')
 
 // Playback timestamp
 let $timestamp = $metricsPanel.append('text')
       .attr('id', 'timestamp')
-      .attr('x', '20px')
-      .attr('y', '20px')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      
+      positions.textY += 2 * positions.textYDelta
   
 let $infectionRate = $metricsPanel.append('text')
       .attr('id', 'infectionRate')
-      .attr('class', 'metric metric-large')
-      .attr('x', '60px')
-      .attr('y', '120px')
+      .attr('class', 'metric text-large')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      
+$metricsPanel.append('text')
+      .text('infection rate')
+      .attr('class', 'text-large')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      .attr('dx', positions.dx + 'px')
+      
+      
+      positions.textY += positions.textYDelta
   
 let $commentCount = $metricsPanel.append('text')
       .attr('id', 'commentCount')
       .attr('class', 'metric')
-      .attr('x', '60px')
-      .attr('y', '180px')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+            
+$metricsPanel.append('text')
+      .text('comments')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      .attr('dx', positions.dx + 'px')
+      
+      
+      positions.textY += positions.textYDelta / 2
   
 let $infectionCount = $metricsPanel.append('text')
       .attr('id', 'infectionCount')
       .attr('class', 'metric')
-      .attr('x', '60px')
-      .attr('y', '240px')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+            
+$metricsPanel.append('text')
+      .text('infections')
+      .attr('x', positions.textX + 'px')
+      .attr('y', positions.textY + 'px')
+      .attr('dx', positions.dx + 'px')
 
 
 let $chart = svg.append('g')
-	  .attr('transform', 'translate(' + (width  - height) / 2 + ', 0)')
+	  .attr('transform', 'translate(' + positions.chartPanelX + ', 0)')
 	
 let $link = $chart.append('g')
 	.attr('id', 'links')
@@ -271,7 +321,7 @@ function exportImage(callback) {
 			
 			if(fileIndex === 10) {
 				$node.selectAll('.node')
-					.style('stroke', 'white')
+					.style('stroke', whiteLike)
 					.style('stroke-width', '1.5px')
 			}
 			
