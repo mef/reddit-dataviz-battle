@@ -20,7 +20,8 @@ let files // array of log files from data source
 	, sliceCounter = d3.scaleQuantize() // number of times an hourly log file should be split to generate one frame, depending on how extraction progresses. This allows to slow down the animation at startup.
 		.range([8, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 	, metadata = {
-		infectionCount: 0
+		commentCount: 0
+		, infectionCount: 0
 		, timestamp: null
 	}
 
@@ -38,9 +39,11 @@ let width = 1920
 
 const color = d3.scaleLinear()
 	  .interpolate(d3.interpolateHsl)
-	  //~.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
-	  .range([d3.rgb("#4F29FD"), d3.rgb('#FD29EA')])
-	, defaultColor = 'white'
+	  //.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
+	  .range([d3.rgb('#2d29fd'),d3.rgb('#f129fd')])
+	  //~const color = d3.scaleSequential(d3.interpolateViridis)
+	, defaultColor = '#83D34A'
+	, patient0Color = '#1018ef'
 
 let  d3n = new D3Node({styles:'.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} .node {stroke-width: .5px; stroke: black;} text {fill: white; font-size: 18px; font-family: Raleway;}'})
 	, svg = d3n.createSVG(width, height)
@@ -79,6 +82,10 @@ let node = chart.append('g')
 
 // music: Rimsky-Korsakov: "Flight of the Bumble-Bee"
 // soundrack alternate Grieg – In the Hall of the Mountain King
+
+
+// See comment using reddit API using https://www.reddit.com/r/memes/api/info?id=t1_commentID
+// for posts, change Id to : t3_postID
 
 /****************************
  *
@@ -267,7 +274,6 @@ function formatData(callback) {
 			, edges: []
 		}
 	
-console.log('format data for d3')
 	graph.forEachNode((node, attributes) => {
 
 // temp data quality check
@@ -615,7 +621,7 @@ function updateSVG(callback) {
 	selection.attr('r', (d, i) =>  { return radius(d.inDegree)})
 		    .attr('cx', d => x(d.x))
 		    .attr('cy', d => y(d.y))
-		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? '#2ccedf' : color(d.infectionAge) : defaultColor)
+		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : defaultColor)
 
 	selection = link.selectAll('.link')
 		.data(d3Graph.edges, d => d.key)
