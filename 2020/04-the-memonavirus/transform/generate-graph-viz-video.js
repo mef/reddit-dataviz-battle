@@ -5,7 +5,7 @@ const exec = require('child_process').exec
 	, {DirectedGraph} = require('graphology')
 	, forceAtlas2 = require('graphology-layout-forceatlas2')
 	
-const  transformSteps = [initLayout, listFiles, processLogFile]
+const transformSteps = [initLayout, listFiles, processLogFile]
 
 let files // array of log files from data source
 	, repoPath // file path for data source repository
@@ -15,10 +15,50 @@ let files // array of log files from data source
 	, fileIndex = 0
 	, outFileIndex = 0
 	, edgeIndexMap = {}
-	, layoutIterationCount = d3.scaleLog()
-		.range([150, 15])
-	, sliceCounter = d3.scaleQuantize() // number of times an hourly log file should be split to generate one frame, depending on how extraction progresses. This allows to slow down the animation at startup.
-		.range([10, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+	
+// variables processing of volumes based on progress
+const layoutIterationCount = function() {
+		switch(true) {
+			case fileIndex > 300:
+				return 1000
+				break
+			case fileIndex > 66:
+				return 300
+				break
+			default:
+				return 150
+				break
+		}
+		
+	}
+	, fileCount = function() {
+		switch(true) {
+			case fileIndex > 300:
+				return 5 * 24
+				break
+			case fileIndex > 66:
+				return 24
+				break
+			default:
+				return 1
+				break
+		}
+		
+	}
+	, sliceCounter = function() {
+		switch(true) {
+			case fileIndex < 32:
+				return 60
+				break
+			case fileIndex < 66:
+				return 25
+				break
+			default:
+				return 1
+				break
+		}
+		
+	}
 	, metadata = {
 		commentCount: 0
 		, infectionCount: 0
@@ -88,26 +128,24 @@ let $captions
 
 /****************************
  *
- * Add comment file contents to the graph
+ * Add comment log entries to the graph
  * 
- * @param {object} logFile array of log entries
+ * @param {object} logData array of log entries
  * @param {function} callback
  *
  *****************************/
-function addComments(logFile, callback) {
+function addComments(logData, callback) {
 
 	// increment comments counter
-	metadata.commentCount += logFile.length
+	metadata.commentCount += logData.length
 	
 	if (fileIndex < 62) {
 	// first 24 hours, also represent uninfectious comments in the graph
 
-		logFile.forEach( function(logLine) {
-			let data = logLine.split('\t')
+		logData.forEach( function(data) {
 			
-			//~if (data.length > 1 ) {
-			//~if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
-			if (data.length > 1 && graph.hasNode(data[3])) {
+			//~if (graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
+			if (graph.hasNode(data[3])) {
 			// line is not empty, the comment's parent ispresent in the graph and  infected.
 				
 				//~// add comment node
@@ -162,60 +200,52 @@ function addComments(logFile, callback) {
 
 /****************************
  *
- * Add infection track to the graph based on logFile contents
+ * Add infection log entries to the graph
  * 
- * @param {object} logFile array of log entries
+ * @param {object} logData array of log entries
  * @param {function} callback
  *
  *****************************/
-function addInfections(logFile, callback) {
+function addInfections(logData, callback) {
 	
 	//~console.log(fileIndex, file)
 	
-	// remove the last empty line of the file
-	//~logFile.pop()
+	logData.forEach( function(data) {
+		
+		metadata.infectionCount++
 	
-	logFile.forEach( function(logLine) {
-		let data = logLine.split('\t')
+		//~// record infected comment node
+		//~graph.mergeNodeAttributes(data[2], {
+			//~infectionAge: fileIndex
+		//~})
 		
-		if (data.length > 1) {
-			// skip empty lines
+		// record infected user node
+		graph.mergeNode(data[1], {
+			infectionAge: fileIndex
+			, x: Math.random() * 100
+			, y: Math.random() * 100
+		})
 		
-			metadata.infectionCount++
-		
-			//~// record infected comment node
-			//~graph.mergeNodeAttributes(data[2], {
-				//~infectionAge: fileIndex
-			//~})
+		if (data[3]) { // skip edge for patient0: infector is empty
 			
-			// record infected user node
-			graph.mergeNode(data[1], {
-				infectionAge: fileIndex
-				, x: Math.random() * 100
-				, y: Math.random() * 100
-			})
-			
-			if (data[3]) { // skip edge for patient0: infector is empty
-				
-				if ( !graph.hasNode(data[3]) ) {
-					// add infecting user node - missing from source - data quality issue
-					graph.mergeNode(data[3], {
-						infectionAge: fileIndex
-						, x: Math.random() * 100
-						, y: Math.random() * 100
-					})
-				}
-				
-				// record infectious edge
-				graph.mergeEdge(data[1], data[3])
+			if ( !graph.hasNode(data[3]) ) {
+				// add infecting user node - missing from source - data quality issue
+				graph.mergeNode(data[3], {
+					infectionAge: fileIndex
+					, x: Math.random() * 100
+					, y: Math.random() * 100
+				})
 			}
 			
+			// record infectious edge
+			graph.mergeEdge(data[1], data[3])
 		}
-		
+	
 	})
 	
-	if (logFile[0].split('\t').length > 1)
-		metadata.timestamp = logFile[0].split('\t')[0]
+	// update playback timestamp
+	if (logData[0])
+		metadata.timestamp = logData[0][0]
 
 	callback()
 }
@@ -413,7 +443,6 @@ function exportImage(callback) {
 					.style('stroke-width', '1.5px')
 			}
 			
-			
 			saveSVG(function(err, res) {
 						
 				callback()
@@ -458,7 +487,7 @@ function formatData(callback) {
 	//~console.log('graph characteristics', graph.order, graph.size)
 	//~console.log('graph', JSON.stringify(graph.export(), null, '   '))
 	
-	console.time('formatData')
+	//~console.time('formatData')
 	
 	let res = {
 			nodes: []
@@ -512,7 +541,7 @@ if (!attributes.x)
 	
 	d3Graph = res
 
-	console.timeEnd('formatData')
+	//~console.timeEnd('formatData')
 	
 	//~console.log('... done')
 	
@@ -566,6 +595,77 @@ function generateFrames(data, recordCount, callback) {
 		})
 	}
 	
+}
+
+/****************************
+ *
+ * Process a log file(s) buffer dataset:
+ * 
+ *   * slice in multiple chunks if needed
+ *   * generate one frame image per chink
+ * 
+ * Recursive function, splices input log file content according to log timestamps and desired slice count
+ * 
+ * @param {object} data: content of one or more log files (comments + infections)
+ * @param {number} currentIndex - recursive calls count tracker
+ * @param {function} callback
+ *
+ *****************************/
+function processBuffer(data, currentIndex, callback) {
+	
+	let sliceCount = sliceCounter()
+	
+	if (currentIndex === sliceCount)
+		callback()
+	else {
+
+		let commentSlice
+			, infectionSlice
+		
+		if (currentIndex === sliceCount - 1) {
+			// last slice, process all remaining data
+			// This is necessary in order not to miss the last line of comment file, which is generally the first record of next hour (minute 0)
+			commentSlice = data.comments
+			infectionSlice = data.infections
+		}
+		else {
+			// Identify the first record with minutes higher than (60 * currentIndex / sliceCount) threshold
+			let commentIndex = data.comments.findIndex(record => new Date(record[0]).getMinutes() > 59 * ((currentIndex+1) / sliceCount) )
+				, infectionIndex = data.infections.findIndex(record => new Date(record[0]).getMinutes() > 59 * ((currentIndex+1) / sliceCount) )
+				
+			commentSlice =  data.comments.splice(0, commentIndex)
+			
+			infectionSlice =  data.infections.splice(0, infectionIndex)
+		}
+			
+
+		addComments(commentSlice, function(err, res) {
+		
+			addInfections(infectionSlice, function(err, res) {
+
+//~console.log('processed slice', currentIndex, commentSlice.length, infectionSlice.length)
+//~processBuffer(data, ++currentIndex, callback)
+				
+				// Generate a frame with the updated dataset
+				updateMetrics(function(err, res) {
+					
+					exportImage(function(err, res) {
+						processBuffer(data, ++currentIndex, callback)
+
+					})
+				})
+			})
+		})
+		
+		
+		//~let recordCount = Math.ceil(logContent.length / sliceCount)
+		//~, commentSlice = data.comments.splice(0, recordCount)
+		//~, infectionSlice = data.infections.splice(0, recordCount)
+
+		//~if (outFileIndex % 100 === 0)
+			//~console.log('sliceCount', sliceCount)
+		
+	}
 }
 
 
@@ -638,6 +738,9 @@ let margin = 30
 	}
 	
 	dimensions.rowHeight = 60
+	
+	
+	
 	
 // panels placeholders (temp)
 
@@ -813,10 +916,6 @@ function listFiles() {
 			
 			//~console.log('files', files)
 			
-			layoutIterationCount.domain([1, files.length])
-			
-			sliceCounter.domain([0, files.length-1])
-			
 			console.log('...all files identified')			
 
 			next()
@@ -842,27 +941,38 @@ function next() {
 
 /****************************
  *
- * Generate one graph image per hour
+ * Append data buffer with one comment and infection file until fileCount is met.
+ * 
+ * @param {object} buff buffer of comments and infections to be included in next frame
  *
  *****************************/
-function processLogFile() {
+function processLogFile(buff) {
 	
 	//~if (fileIndex === files.length) {
-	if (fileIndex === 100) {
+	if (fileIndex === 300) {
 		console.log('... All log files processed')
 		next()
 	}
 	else  {
+
 		if (fileIndex % 40 === 0) {
 			console.log('..')
 			console.log('.. progress:', Math.floor(fileIndex / files.length * 100) + '%')
 		}
 		
-console.log('processing file', fileIndex, 'into outFile', outFileIndex)
+		buff = buff || {
+			comments: []
+			, infections: []
+			, count: 0
+		}
+		
+console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile', outFileIndex)
+
 		// Cleanup comments out of graph when processing first file after 24h
 		if (fileIndex === 62)
 			filterComments()
 		
+		// get comments file contents
 		readFile(files[fileIndex], function(err, file) {
 			
 			if(err) {
@@ -875,23 +985,53 @@ console.log('processing file', fileIndex, 'into outFile', outFileIndex)
 			}
 			else {
 				
-				let logContent = file.split('\n')
-				
-				addComments(logContent, function(err, res) {
+				let comments = file.split('\n')
+								.map(line => line.split('\t'))
+								.filter(line => line.length > 1)
 					
-					if (fileIndex < 62) {
-					// Within day 1
-					// Generate a frame with the new uninfected nodes
-						updateMetrics(function(err, res) {
-							
-							exportImage(function(err, res) {
-								processInfectionFile()
-
-							})
-						})
+					console.log('comments count', comments.length)
+								
+				buff.comments = buff.comments.concat(comments)
+				
+				// get infections file contents
+				readFile(files[fileIndex+1], function(err, file) {
+					
+					if(err) {
+						// invalid file, skip
+			
+						fileIndex += 2
+						
+						// process next hour slot
+						processLogFile()
 					}
-					else
-						processInfectionFile()
+					else {				
+						
+						let infections = file.split('\n')
+								.map(line => line.split('\t'))
+								.filter(line => line.length > 1)
+										
+						buff.infections = buff.infections.concat(infections)
+						
+						buff.count++
+							
+						fileIndex += 2
+						
+						if (buff.count === fileCount()) {
+						//~if (buff.count === 3) {
+							processBuffer(buff, 0, function(err, res) {
+								processLogFile()
+							})
+							
+						}
+						else {
+							
+							// process next hour slot
+							processLogFile(buff)
+						}
+				
+				
+
+					}
 				})
 			}
 		})
@@ -917,7 +1057,7 @@ function processInfectionFile() {
 		else {
 			
 			let logContent = file.split('\n')
-				, sliceCount = sliceCounter(fileIndex)
+				, sliceCount = sliceCount()
 
 			if (outFileIndex % 100 === 0)
 				console.log('sliceCount', sliceCount)
@@ -994,13 +1134,13 @@ function updateMetrics(callback) {
 	
 	//~console.log('FA2 settings', JSON.stringify(FA2Settings, null, ''))
 	
-	console.time('FA2')
+	//~console.time('FA2')
 	
 	//~console.log('iterations', Math.floor(layoutIterationCount(fileIndex+1)))
 	
 	forceAtlas2.assign(graph, {iterations: Math.floor(layoutIterationCount(fileIndex+1)), settings: FA2Settings})
 	
-	console.timeEnd('FA2')
+	//~console.timeEnd('FA2')
 	
 	//~console.log('... layout computation done')
 	
@@ -1016,7 +1156,7 @@ function updateSVG(callback) {
 
 	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
-	console.time('updateSVG')
+	//~console.time('updateSVG')
 	
 	// update metrics panel content
 	$timestamp.text(formatTimestamp(metadata.timestamp))
@@ -1089,7 +1229,7 @@ function updateSVG(callback) {
 			  
 	//~console.log('... done')
 	
-	console.timeEnd('updateSVG')
+	//~console.timeEnd('updateSVG')
 	
 	callback()
 
