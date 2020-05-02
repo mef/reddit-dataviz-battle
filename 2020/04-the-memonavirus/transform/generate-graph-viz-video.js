@@ -242,7 +242,7 @@ function addLegend() {
 	
 	$legend.append('circle')
 	  .attr('cx', marginH + 25) // align with rect
-	  .attr('cy', dimensions.rowHeight * 1.75 - 5 )
+	  .attr('cy', dimensions.rowHeight * 1.75 )
 	  .attr('r', 30)
 	  .attr('fill', 'none')
 	  .style('stroke', whiteLike)
@@ -250,7 +250,7 @@ function addLegend() {
 	
 	$legend.append('circle')
 	  .attr('cx', marginH + 25) // align with rect
-	  .attr('cy', dimensions.rowHeight * 1.75 + 5 )
+	  .attr('cy', dimensions.rowHeight * 1.75 + 10 )
 	  .attr('r', 20)
 	  .attr('fill', 'none')
 	  .style('stroke', whiteLike)
@@ -258,7 +258,7 @@ function addLegend() {
 	
 	$legend.append('circle')
 	  .attr('cx', marginH + 25) // align with rect
-	  .attr('cy', dimensions.rowHeight * 1.75 + 15 )
+	  .attr('cy', dimensions.rowHeight * 1.75 + 20 )
 	  .attr('r', 10)
 	  .attr('fill', 'none')
 	  .style('stroke', whiteLike)
@@ -266,7 +266,7 @@ function addLegend() {
 	
 	let $text = $legend.append('text')
 		.attr('x', marginH + 70)
-	    .attr('y', dimensions.rowHeight * 1.5 )
+	    .attr('y', dimensions.rowHeight * 1.5 + 5 )
 	 
 	 $text.append('tspan')
 	   .text('User (larger = most')
@@ -275,6 +275,35 @@ function addLegend() {
 	   .text('commented on )')
 	   .attr('dy', '1.2em')
 	   .attr('x', marginH + 70)
+	
+	let point1  = {
+			x: marginH - 10
+			, y: dimensions.rowHeight * 2.75
+		}
+		, point2  = {
+			x: point1.x + 45
+			, y: point1.y + dimensions.rowHeight * .5
+		}
+		, arc  = Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2))
+	
+	
+	legendEdgePath = 'M'
+		  + ' ' + point1.x + ',' + point1.y
+		  + ' A'
+		  + ' ' + arc + ',' + arc
+		  + ' 0 0,0'
+		  + ' ' + point2.x + ',' + point2.y
+	
+	$legend.append('path')
+	  .attr('d', legendEdgePath)
+	  .attr('fill', 'none')
+	  .style('stroke', whiteLike)
+	  .style('stroke-width', '1.5px')
+	    
+	$legend.append('text')
+	  .text('Comment')
+		.attr('x', marginH + 70)
+		.attr('y', dimensions.rowHeight * 2.75 + 20)
 	    
 	    
 	// Colors
@@ -284,7 +313,7 @@ function addLegend() {
 	
 	$colors.append('rect')
 	  .attr('x', marginH)
-	  .attr('y', dimensions.rowHeight * 1.5 - 20 )
+	  .attr('y', dimensions.rowHeight * 1.25 - 20 )
 	  .attr('width', 50)
 	  .attr('height', 20)
 	  .attr('fill', saneColor)
@@ -292,7 +321,7 @@ function addLegend() {
 	$colors.append('text')
 	  .text('Sane')
 		.attr('x', marginH + 70)
-	    .attr('y', dimensions.rowHeight * 1.5 )
+	    .attr('y', dimensions.rowHeight * 1.25 )
 	
 	
 	$colors.append('rect')
@@ -310,7 +339,7 @@ function addLegend() {
 	
 	$colors.append('rect')
 	  .attr('x', marginH)
-	  .attr('y', dimensions.rowHeight * 2.5 - 20 )
+	  .attr('y', dimensions.rowHeight * 2.75 - 20 )
 	  .attr('width', 50)
 	  .attr('height', 20)
 	  .attr('fill', lessRecentInfectedColor)
@@ -318,12 +347,12 @@ function addLegend() {
 	$colors.append('text')
 	  .text('Less recently infected')
 		.attr('x', marginH + 70)
-	    .attr('y', dimensions.rowHeight * 2.5 )
+	    .attr('y', dimensions.rowHeight * 2.75 )
 	
 	
 	$colors.append('rect')
 	  .attr('x', marginH)
-	  .attr('y', dimensions.rowHeight * 3 - 20 )
+	  .attr('y', dimensions.rowHeight * 3.5 - 20 )
 	  .attr('width', 50)
 	  .attr('height', 20)
 	  .attr('fill', patient0Color)
@@ -333,7 +362,7 @@ function addLegend() {
 	$colors.append('text')
 	  .text('Patient zero')
 		.attr('x', marginH + 70)
-	    .attr('y', dimensions.rowHeight * 3 )
+	    .attr('y', dimensions.rowHeight * 3.5 )
 }
 
 /****************************
@@ -429,6 +458,8 @@ function formatData(callback) {
 	//~console.log('graph characteristics', graph.order, graph.size)
 	//~console.log('graph', JSON.stringify(graph.export(), null, '   '))
 	
+	console.time('formatData')
+	
 	let res = {
 			nodes: []
 			, edges: []
@@ -481,6 +512,8 @@ if (!attributes.x)
 	
 	d3Graph = res
 
+	console.timeEnd('formatData')
+	
 	//~console.log('... done')
 	
 	callback()
@@ -961,13 +994,13 @@ function updateMetrics(callback) {
 	
 	//~console.log('FA2 settings', JSON.stringify(FA2Settings, null, ''))
 	
-	//~console.time('FA2')
+	console.time('FA2')
 	
 	//~console.log('iterations', Math.floor(layoutIterationCount(fileIndex+1)))
 	
 	forceAtlas2.assign(graph, {iterations: Math.floor(layoutIterationCount(fileIndex+1)), settings: FA2Settings})
 	
-	//~console.timeEnd('FA2')
+	console.timeEnd('FA2')
 	
 	//~console.log('... layout computation done')
 	
@@ -983,6 +1016,7 @@ function updateSVG(callback) {
 
 	//~console.log(JSON.stringify(graph.toJSON(), null, '    '))
 	
+	console.time('updateSVG')
 	
 	// update metrics panel content
 	$timestamp.text(formatTimestamp(metadata.timestamp))
@@ -1054,6 +1088,8 @@ function updateSVG(callback) {
 	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
 			  
 	//~console.log('... done')
+	
+	console.timeEnd('updateSVG')
 	
 	callback()
 
