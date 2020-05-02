@@ -5,7 +5,7 @@ const exec = require('child_process').exec
 	, {DirectedGraph} = require('graphology')
 	, forceAtlas2 = require('graphology-layout-forceatlas2')
 	
-const  transformSteps = [listFiles, processLogFile]
+const  transformSteps = [initLayout, listFiles, processLogFile]
 
 let files // array of log files from data source
 	, repoPath // file path for data source repository
@@ -18,7 +18,7 @@ let files // array of log files from data source
 	, layoutIterationCount = d3.scaleLog()
 		.range([150, 15])
 	, sliceCounter = d3.scaleQuantize() // number of times an hourly log file should be split to generate one frame, depending on how extraction progresses. This allows to slow down the animation at startup.
-		.range([8, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+		.range([10, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 	, metadata = {
 		commentCount: 0
 		, infectionCount: 0
@@ -27,190 +27,55 @@ let files // array of log files from data source
 
 let width = 1920
 	, height = 1080
-	, margin = 30
-	, x = d3.scaleLinear()
-		.range([margin, height - margin]) // square graph, use height
-	, y = d3.scaleLinear()
-		.range([margin, height - margin])
+	, marginH = 40
+	, marginV = 30
+	, dimensions = {}
+	, xScale = d3.scaleLinear()
+		.range([0, height - 2 * marginV])
+	, yScale = d3.scaleLinear()
+		.range([0, height - 2 * marginV])
 	, radius = d3.scaleSqrt()
 		.range([3, 30])
 	, minDegree = +Infinity
 	, maxDegree = 0
+	, saneColor = '#83D34A'
+	, patient0Color = '#1018ef'
+	, recentInfectedColor = '#cf29fd'
+	, lessRecentInfectedColor = '#5229fd'
+	, whiteLike = '#eee'
+	, bgFill = '#19101b'
 	, color = d3.scaleLinear()
 	  .interpolate(d3.interpolateHsl)
 	  //.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
-	  .range([d3.rgb('#5229fd'),d3.rgb('#cf29fd')])
+	  .range([d3.rgb(lessRecentInfectedColor),d3.rgb(recentInfectedColor)])
 	  //~const color = d3.scaleSequential(d3.interpolateViridis)
-	, saneColor = '#83D34A'
-	, patient0Color = '#1018ef'
-	, whiteLike = '#eee'
-	, bgFill = '#222'
 
-let  d3n = new D3Node({styles:' \
+let d3n = new D3Node({styles:' \
 		.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} \
 		.node {stroke-width: .5px; stroke: black;} \
 		text {fill: ' + whiteLike + '; font-size: 20px; font-family: Raleway; } \
 		.metric {text-anchor: end;} \
 		.text-large {font-size: 32px;} \
 		#infectionRate {fill: red;} \
-		#infectionCount {fill: #cf29fd;} \
+		#infectionCount {fill: ' + recentInfectedColor + ';} \
 		#commentCount {fill: ' + saneColor + ';} \
 	'})
-	, svg = d3n.createSVG(width, height)
+	, svg = d3n.createSVG('100%', '100%', {
+		preserveAspectRatio: 'xMinYMin'
+		, viewBox: '0 0 ' + width + ' ' + height})
 
-
-/****************************
- *
- * Initialize chart layout
- *
- *****************************/
- 
-// Background
-svg.append('rect')
-	 .attr('width', '100%')
-	 .attr('height', '100%')
-	 .attr('fill', bgFill)
-	 .attr('stroke', 'red')
-	 .attr('stroke-width', '2px')
-
-// dimension measures
-
-let sizes = {
-		metricsPanelWidth: (width  - height) / 2  - margin
-		, captionsPanelWidth: 2 * (width  - height) / 2  - margin
-		, metricsPanelHeight: (height - 2 * margin) * 1 / 3
-		, captionsPanelHeight: (height - 2 * margin) * 2 / 3
-	}
-	, positions = {
-		chartPanelX: (width  - height) / 2
-		, metricsPanelX: sizes.metricsPanelWidth + height + margin
-		, captionsPanelX: height + margin
-		, captionsPanelY: (height - 2 * margin) * 1 / 3 + 2 * margin
-		, textX: sizes.metricsPanelWidth / 3
-		, dx: 10
-		, textY: 2 * margin
-		, textYDelta: 60
-	}
-
-
-//~console.log('----------------------')
-//~console.log(sizes)
-//~console.log(positions)
-//~console.log('----------------------')
-
-
-// Metrics panel
-let $metrics = svg.append('g')
-	  .attr('transform', 'translate(' + positions.metricsPanelX + ', ' + margin + ')')
-
-// Metrics panel background
-$metrics.append('rect')
-	 .attr('width', sizes.metricsPanelWidth)
-	 .attr('height', sizes.metricsPanelHeight)
-	 .attr('fill', 'none')
-	 .attr('stroke-width', '1px')
-	 .attr('stroke', '#333')
-
-// Playback timestamp
-let $timestamp = $metrics.append('text')
-      .attr('id', 'timestamp')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      
-      positions.textY += 2 * positions.textYDelta
-  
-  
-let $infectionRate = $metrics.append('text')
-      .attr('id', 'infectionRate')
-      .attr('class', 'metric text-large')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      
-$metrics.append('text')
-      .text('infection rate')
-      .attr('class', 'text-large')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      .attr('dx', positions.dx + 'px')
-      
-      positions.textY += positions.textYDelta
-
-    
-let $infectionCount = $metrics.append('text')
-      .attr('id', 'infectionCount')
-      .attr('class', 'metric')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-            
-$metrics.append('text')
-      .text('infections')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      .attr('dx', positions.dx + 'px')
-    
-      positions.textY += positions.textYDelta / 2
-
-
-let $commentCount = $metrics.append('text')
-      .attr('id', 'commentCount')
-      .attr('class', 'metric')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-            
-$metrics.append('text')
-      .text('Storytelling text goes here')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      .attr('dx', positions.dx + 'px')
-
-
-
-// Chart panel
-let $chart = svg.append('g')
-	  .attr('transform', 'translate(' + positions.chartPanelX + ', 0)')
+// DOM node selectors
+let $captions
+	, $chart
+	, $commentCount
+	, $infectionRate
+	, $infectionCount
+	, $legend
+	, $link
+	, $metrics
+	, $node
+	, $timestamp
 	
-let $link = $chart.append('g')
-	.attr('id', 'links')
-	.style('opacity', .7)
-
-let $node = $chart.append('g')
-	.attr('id', 'nodes')
-
-
-
-
-// Captions panel
-
-// background overlay
-svg.append('g')
-	.attr('transform', 'translate(' + positions.captionsPanelX + ', ' + positions.captionsPanelY + ')')
-	.style('mix-blend-mode', 'normal')
-	.append('rect')
-	  .attr('width', sizes.captionsPanelWidth)
-	  .attr('height', sizes.captionsPanelHeight)
-	  .attr('fill', bgFill)
-	  .attr('opacity', .5)
-	  .attr('stroke', 'none')
-
-let $captions = svg.append('g')
-	  .attr('transform', 'translate(' + positions.captionsPanelX + ', ' + positions.captionsPanelY + ')')
-
-// Captions panel border
-$captions.append('rect')
-	 .attr('width', sizes.captionsPanelWidth)
-	 .attr('height', sizes.captionsPanelHeight)
-	 .attr('fill', 'none')
-	 .attr('stroke-width', '1px')
-	 .attr('stroke', '#333')
-	 
-$captions.append('text')
-      .text('comments')
-      .attr('x', positions.textX + 'px')
-      .attr('y', positions.textY + 'px')
-      .attr('dx', positions.dx + 'px')
-	 
-	 
-
 // mp4 generation
 // ffmpeg -r 25 -f image2 -s 1920x1080 -i out-%04d.svg -vcodec libx264 -crf 25  -pix_fmt yuv420p test.mp4
 
@@ -241,7 +106,8 @@ function addComments(logFile, callback) {
 			let data = logLine.split('\t')
 			
 			//~if (data.length > 1 ) {
-			if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
+			//~if (data.length > 1 && graph.hasNode(data[3]) &&  graph.hasNodeAttribute(data[3], 'infectionAge')) {
+			if (data.length > 1 && graph.hasNode(data[3])) {
 			// line is not empty, the comment's parent ispresent in the graph and  infected.
 				
 				//~// add comment node
@@ -352,6 +218,153 @@ function addInfections(logFile, callback) {
 		metadata.timestamp = logFile[0].split('\t')[0]
 
 	callback()
+}
+
+
+/****************************
+ *
+ * Populate legend panel
+ * 
+ *  @pre $legend panel selector is defined
+ *
+ *****************************/
+function addLegend() {
+	
+	
+	$legend.append('text')
+	  .text('Legend')
+		//~.attr('class', 'text-large')
+		.attr('x', marginH)
+		.attr('y', dimensions.rowHeight * .75)
+	
+	// Shapes
+	
+	
+	$legend.append('circle')
+	  .attr('cx', marginH + 25) // align with rect
+	  .attr('cy', dimensions.rowHeight * 1.75 - 5 )
+	  .attr('r', 30)
+	  .attr('fill', 'none')
+	  .style('stroke', whiteLike)
+	  .style('stroke-width', '1.5px')
+	
+	$legend.append('circle')
+	  .attr('cx', marginH + 25) // align with rect
+	  .attr('cy', dimensions.rowHeight * 1.75 + 5 )
+	  .attr('r', 20)
+	  .attr('fill', 'none')
+	  .style('stroke', whiteLike)
+	  .style('stroke-width', '1.5px')
+	
+	$legend.append('circle')
+	  .attr('cx', marginH + 25) // align with rect
+	  .attr('cy', dimensions.rowHeight * 1.75 + 15 )
+	  .attr('r', 10)
+	  .attr('fill', 'none')
+	  .style('stroke', whiteLike)
+	  .style('stroke-width', '1.5px')
+	
+	let $text = $legend.append('text')
+		.attr('x', marginH + 70)
+	    .attr('y', dimensions.rowHeight * 1.5 )
+	 
+	 $text.append('tspan')
+	   .text('User (larger = most')
+	 
+	 $text.append('tspan')
+	   .text('commented on )')
+	   .attr('dy', '1.2em')
+	   .attr('x', marginH + 70)
+	    
+	    
+	// Colors
+	
+	let $colors = $legend.append('g')
+		.attr('transform', 'translate(0, ' + 3 * dimensions.rowHeight  + ')')
+	
+	$colors.append('rect')
+	  .attr('x', marginH)
+	  .attr('y', dimensions.rowHeight * 1.5 - 20 )
+	  .attr('width', 50)
+	  .attr('height', 20)
+	  .attr('fill', saneColor)
+	  
+	$colors.append('text')
+	  .text('Sane')
+		.attr('x', marginH + 70)
+	    .attr('y', dimensions.rowHeight * 1.5 )
+	
+	
+	$colors.append('rect')
+	  .attr('x', marginH)
+	  .attr('y', dimensions.rowHeight * 2 - 20 )
+	  .attr('width', 50)
+	  .attr('height', 20)
+	  .attr('fill', recentInfectedColor)
+	  
+	$colors.append('text')
+	  .text('Recently infected')
+		.attr('x', marginH + 70)
+	    .attr('y', dimensions.rowHeight * 2 )
+	
+	
+	$colors.append('rect')
+	  .attr('x', marginH)
+	  .attr('y', dimensions.rowHeight * 2.5 - 20 )
+	  .attr('width', 50)
+	  .attr('height', 20)
+	  .attr('fill', lessRecentInfectedColor)
+	  
+	$colors.append('text')
+	  .text('Less recently infected')
+		.attr('x', marginH + 70)
+	    .attr('y', dimensions.rowHeight * 2.5 )
+	
+	
+	$colors.append('rect')
+	  .attr('x', marginH)
+	  .attr('y', dimensions.rowHeight * 3 - 20 )
+	  .attr('width', 50)
+	  .attr('height', 20)
+	  .attr('fill', patient0Color)
+	  .style('stroke', whiteLike)
+	  .style('stroke-width', '1.5px')
+	  
+	$colors.append('text')
+	  .text('Patient zero')
+		.attr('x', marginH + 70)
+	    .attr('y', dimensions.rowHeight * 3 )
+}
+
+/****************************
+ *
+ * Append panel to the SVG
+ * 
+ * @param {object} opts
+ * 
+ *   opts.x, opts.y Panel position
+ *   opts.width, opts.height Panel size
+ *   opts.bg {boolean?} whether background rectangle should be displayed
+ *
+ *****************************/
+function addPanel(opts) {
+	
+	let $panel = svg.append('g')
+		  .attr('transform', 'translate(' + opts.x + ', ' + opts.y + ')')
+		  .style('mix-blend-mode', 'normal')
+	
+	if (typeof opts.bg === 'undefined' || opts.bg) {
+	// Metrics panel background
+		$panel.append('rect')
+		  .attr('width', opts.width)
+		  .attr('height', opts.height)
+		  .attr('fill', bgFill)
+		  .attr('fill-opacity', .6)
+		  .attr('stroke-width', '1px')
+		  .attr('stroke', '#333')
+	}
+	
+	return $panel
 }
 
 /****************************
@@ -522,6 +535,234 @@ function generateFrames(data, recordCount, callback) {
 	
 }
 
+
+/****************************
+ *
+ * Draw the visualization's building blocks in the SVG
+ *
+ *****************************/
+function initLayout() {
+	 
+	// Background
+	svg.append('rect')
+		 .attr('width', '100%')
+		 .attr('height', '100%')
+		 .attr('fill', bgFill)
+		 .attr('stroke', 'red') // temp
+		 .attr('stroke-width', '2px')
+
+	// dimension measures
+//.. temp
+let margin = 30
+
+	let sizes = {
+			metricsPanelWidth: (width  - height) / 2  - margin
+			, captionsPanelWidth: 2 * (width  - height) / 2  - margin
+			, metricsPanelHeight: (height - 2 * margin) * 1 / 3
+			, captionsPanelHeight: (height - 2 * margin) * 2 / 3
+		}
+		, positions = {
+			chartPanelX: (width - height + 2 * marginV) / 2
+			, metricsPanelX: sizes.metricsPanelWidth + height + margin
+			, captionsPanelX: height + margin
+			, captionsPanelY: (height - 2 * margin) * 1 / 3 + 2 * margin
+			, textX: sizes.metricsPanelWidth / 3
+			, dx: 10
+			, textY: 2 * margin
+			, textYDelta: 60
+		}
+	
+	// Panels horizontal positions and widths
+	dimensions = {
+		leftCol: {
+			x: marginH
+			, width: (width - height) / 2 + marginV - 2 * marginH
+		}
+	}
+
+	dimensions.centerCol = {
+		x: dimensions.leftCol.x + dimensions.leftCol.width + marginH
+		, width: height - 2 * marginV
+	}
+
+	dimensions.rightCol = {
+		x: dimensions.centerCol.x + dimensions.centerCol.width + marginH
+		, width: dimensions.leftCol.width
+	}
+
+	// Panels heights
+	dimensions.smallPanel = {
+		// reference row height, page fits 7 (3 blocks, including vertical margins)
+		height: (height - 4 * marginV ) / 7
+	}
+	
+	dimensions.mediumPanel = {
+		height: dimensions.smallPanel.height * 3
+	}
+	
+	dimensions.largePanel = {
+		height: dimensions.smallPanel.height * 4 + marginV
+	}
+	
+	dimensions.rowHeight = 60
+	
+// panels placeholders (temp)
+
+	// left
+	svg.append('rect')
+		 .attr('x', dimensions.leftCol.x)
+		 .attr('y', 2 * marginV + dimensions.smallPanel.height)
+		 .attr('width', dimensions.leftCol.width)
+		 .attr('height', dimensions.mediumPanel.height)
+		 .attr('fill', 'none')
+		 .attr('stroke-width', '2px')
+		 .attr('stroke', 'red')
+		 
+	//~svg.append('rect')
+		 //~.attr('x', dimensions.leftCol.x)
+		 //~.attr('y', 3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height)
+		 //~.attr('width', dimensions.leftCol.width)
+		 //~.attr('height', dimensions.mediumPanel.height)
+		 //~.attr('fill', 'none')
+		 //~.attr('stroke-width', '2px')
+		 //~.attr('stroke', 'red')
+		 
+	// right
+		 
+	//~svg.append('rect')
+		 //~.attr('x', dimensions.rightCol.x - dimensions.rightCol.width)
+		 //~.attr('y', 2 * marginV + dimensions.mediumPanel.height)
+		 //~.attr('width', 2 * dimensions.rightCol.width)
+		 //~.attr('height', dimensions.largePanel.height)
+		 //~.attr('fill', 'none')
+		 //~.attr('stroke-width', '2px')
+		 //~.attr('stroke', 'red')
+
+	//~console.log('----------------------')
+	//~console.log(sizes)
+	//~console.log(positions)
+	//~console.log('----------------------')
+
+
+
+	// Graph chart panel - Center, background
+	 $chart = addPanel({
+		x: dimensions.centerCol.x
+		, y: marginV
+		, width: dimensions.centerCol.width
+		, height: dimensions.centerCol.width
+		, bg: false
+	})
+
+	$link = $chart.append('g')
+	  .attr('id', 'links')
+	  .style('opacity', .7)
+
+	$node = $chart.append('g')
+	  .attr('id', 'nodes')
+		
+	// Title panel
+	let $title = addPanel({
+		x: dimensions.leftCol.x
+		, y: marginV
+		, width: dimensions.leftCol.width * 1.7
+		, height: dimensions.smallPanel.height
+	})
+	
+	$title.append('text')
+		.text('Memonavirus - story of an epidemic')
+		  .attr('class', 'text-large')
+		  .attr('x', marginH)
+		  .attr('y', (dimensions.smallPanel.height / 2 + 8))
+
+		
+	// Legend panel
+	$legend = addPanel({
+		x: dimensions.leftCol.x
+		, y: 3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height
+		, width: dimensions.leftCol.width
+		, height: dimensions.mediumPanel.height
+	})
+	
+	addLegend()
+
+	// Metrics panel
+	$metrics = addPanel({
+		x: dimensions.rightCol.x
+		, y: marginV
+		, width: dimensions.rightCol.width
+		, height: dimensions.mediumPanel.height
+	})
+
+	// Playback timestamp
+	 $timestamp = $metrics.append('text')
+		  .attr('id', 'timestamp')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+		  
+		  positions.textY += 2 * dimensions.rowHeight
+	  
+	 $infectionRate = $metrics.append('text')
+		  .attr('id', 'infectionRate')
+		  .attr('class', 'metric text-large')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+		  
+	$metrics.append('text')
+		  .text('infection rate')
+		  .attr('class', 'text-large')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+		  .attr('dx', positions.dx)
+		  
+		  positions.textY += dimensions.rowHeight
+
+		
+	 $infectionCount = $metrics.append('text')
+		  .attr('id', 'infectionCount')
+		  .attr('class', 'metric')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+				
+	$metrics.append('text')
+		  .text('infections')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+		  .attr('dx', positions.dx)
+		
+		  positions.textY += dimensions.rowHeight / 2
+
+
+	 $commentCount = $metrics.append('text')
+		  .attr('id', 'commentCount')
+		  .attr('class', 'metric')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+				
+	$metrics.append('text')
+		  .text('Comments')
+		  .attr('x', positions.textX)
+		  .attr('y', positions.textY)
+		  .attr('dx', positions.dx)
+
+
+	// Captions panel
+
+	$captions = addPanel({
+		x: dimensions.rightCol.x - dimensions.rightCol.width * .6
+		, y: 2 * marginV + dimensions.mediumPanel.height
+		, width: 1.6 * dimensions.rightCol.width
+		, height: dimensions.largePanel.height
+	})
+
+	$captions.append('text')
+		  .text('Storytelling text goes here')
+		  .attr('x', marginH)
+		  .attr('y', dimensions.rowHeight)
+		 
+	next()
+}
+
 /****************************
  *
  * Lookup data source location 
@@ -573,8 +814,8 @@ function next() {
  *****************************/
 function processLogFile() {
 	
-	if (fileIndex === files.length) {
-	//~if (fileIndex === 100) {
+	//~if (fileIndex === files.length) {
+	if (fileIndex === 100) {
 		console.log('... All log files processed')
 		next()
 	}
@@ -760,8 +1001,8 @@ function updateSVG(callback) {
 //~console.log( 'min max X', minX, maxX)
 //~console.log( 'min max Y', minY, maxY)
 
-	x.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
-	y.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
+	xScale.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
+	yScale.domain([Math.min(minX, minY), Math.max(maxX, maxY)])
 	
 	radius.domain(d3.extent(d3Graph.nodes, d => d.inDegree))
 	
@@ -780,8 +1021,8 @@ function updateSVG(callback) {
 
 	// update selection
 	$nodeSelection.attr('r', (d, i) =>  { return radius(d.inDegree)})
-		    .attr('cx', d => x(d.x))
-		    .attr('cy', d => y(d.y))
+		    .attr('cx', d => xScale(d.x))
+		    .attr('cy', d => yScale(d.y))
 		    .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : saneColor)
 		    
 	$linkSelection = $link.selectAll('.link')
@@ -797,12 +1038,12 @@ function updateSVG(callback) {
 	// update selection
 	$linkSelection.attr('d', (d, i) => {
 		try {
-		  let dx = x(d3Graph.nodes[d.target].x) - y(d3Graph.nodes[d.source].x)
-			  , dy = y(d3Graph.nodes[d.target].y) - y(d3Graph.nodes[d.source].y)
+		  let dx = xScale(d3Graph.nodes[d.target].x) - yScale(d3Graph.nodes[d.source].x)
+			  , dy = yScale(d3Graph.nodes[d.target].y) - yScale(d3Graph.nodes[d.source].y)
 			  , dr = Math.sqrt(dx * dx + dy * dy)
 			  , sweep = i%2 === 0 ? 0 : 1
 			  
-		  return 'M' + x(d3Graph.nodes[d.source].x) + ',' + y(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + x(d3Graph.nodes[d.target].x) + ',' + y(d3Graph.nodes[d.target].y)
+		  return 'M' + xScale(d3Graph.nodes[d.source].x) + ',' + yScale(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + xScale(d3Graph.nodes[d.target].x) + ',' + yScale(d3Graph.nodes[d.target].y)
 		  
 		  
 		  }catch(e) {
