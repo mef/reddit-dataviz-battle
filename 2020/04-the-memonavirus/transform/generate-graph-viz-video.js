@@ -16,8 +16,8 @@ let files // array of log files from data source
 	, outFileIndex = 0
 	, edgeIndexMap = {}
 	
-// variables processing of volumes based on progress
-const layoutIterationCount = function() {
+// variable processing of volumes based on progress
+const layoutIterationCount = function() { // FA2 layout iterations
 		switch(true) {
 			case fileIndex > 300:
 				return 1000
@@ -31,30 +31,50 @@ const layoutIterationCount = function() {
 		}
 		
 	}
-	, fileCount = function() {
-		switch(true) {
-			case fileIndex > 300:
-				return 5 * 24
-				break
-			case fileIndex > 66:
-				return 24
-				break
-			default:
-				return 1
-				break
-		}
+	, fileCount = function() { // number of hourly files to process in one image grame
+		return 3
+		
+		//~switch(true) {
+			//~case fileIndex > 300:
+				//~return 5 * 24
+				//~break
+			//~case fileIndex > 66:
+				//~return 24
+				//~break
+			//~default:
+				//~return 1
+				//~break
+		//~}
 		
 	}
-	, sliceCounter = function() {
+	, sliceCounter = function() { // number of slices one file should be chunked into
+		return 1
+		//~switch(true) {
+			//~case fileIndex <= 12:
+				//~return 2
+				//~break
+			//~case fileIndex < 66:
+				//~return 6
+				//~break
+			//~default:
+				//~return 1
+				//~break
+		//~}
+		
+	}
+	, frameRate = function() { // number of slices one file should be chunked into
 		switch(true) {
-			case fileIndex < 32:
-				return 2
+			case fileIndex === 12:
+				return 15
 				break
-			case fileIndex < 66:
-				return 25
+			//~case fileIndex < 66:
+				//~return 60
+				//~break
+			case fileIndex < 100:
+				return 30
 				break
 			default:
-				return 1
+				return 15
 				break
 		}
 		
@@ -108,12 +128,14 @@ let d3n = new D3Node({styles:' \
 let $captions
 	, $chart
 	, $commentCount
-	, $infectionRate
 	, $infectionCount
+	, $infectionRate
 	, $legend
 	, $link
 	, $metrics
 	, $node
+	, $playback
+	, $speed
 	, $timestamp
 	
 // mp4 generation
@@ -222,8 +244,8 @@ function addInfections(logData, callback) {
 		// record infected user node
 		graph.mergeNode(data[1], {
 			infectionAge: fileIndex
-			, x: Math.random() * 100
-			, y: Math.random() * 100
+			, x: !data[3] ? 0 : Math.random() * 100
+			, y: !data[3] ? 0 : Math.random() * 100
 		})
 		
 		if (data[3]) { // skip edge for patient0: infector is empty
@@ -437,13 +459,6 @@ function exportImage(callback) {
 
 		updateSVG(function(err, res) {
 			
-			if(fileIndex === 10) {
-				$node.selectAll('.node')
-					.style('stroke', whiteLike)
-					.style('stroke-width', '1.5px')
-			}
-			
-			
 			callback()
 			//~saveSVG(function(err, res) {
 						
@@ -601,79 +616,6 @@ function generateFrames(data, recordCount, callback) {
 
 /****************************
  *
- * Process a log file(s) buffer dataset:
- * 
- *   * slice in multiple chunks if needed
- *   * generate one frame image per chink
- * 
- * Recursive function, splices input log file content according to log timestamps and desired slice count
- * 
- * @param {object} data: content of one or more log files (comments + infections)
- * @param {number} currentIndex - recursive calls count tracker
- * @param {function} callback
- *
- *****************************/
-function processBuffer(data, currentIndex, callback) {
-	
-	let sliceCount = sliceCounter()
-	
-	if (currentIndex === sliceCount)
-		callback()
-	else {
-
-		let commentSlice
-			, infectionSlice
-		
-		if (currentIndex === sliceCount - 1) {
-			// last slice, process all remaining data
-			// This is necessary in order not to miss the last line of comment file, which is generally the first record of next hour (minute 0)
-			commentSlice = data.comments
-			infectionSlice = data.infections
-		}
-		else {
-			// Identify the first record with minutes higher than (60 * currentIndex / sliceCount) threshold
-			let commentIndex = data.comments.findIndex(record => new Date(record[0]).getMinutes() > 59 * ((currentIndex+1) / sliceCount) )
-				, infectionIndex = data.infections.findIndex(record => new Date(record[0]).getMinutes() > 59 * ((currentIndex+1) / sliceCount) )
-				
-			commentSlice =  data.comments.splice(0, commentIndex)
-			
-			infectionSlice =  data.infections.splice(0, infectionIndex)
-		}
-			
-
-		addComments(commentSlice, function(err, res) {
-		
-			addInfections(infectionSlice, function(err, res) {
-
-//~console.log('processed slice', currentIndex, commentSlice.length, infectionSlice.length)
-//~processBuffer(data, ++currentIndex, callback)
-				
-				// Generate a frame with the updated dataset
-				updateMetrics(function(err, res) {
-					
-					exportImage(function(err, res) {
-						console.log('image exported', fileIndex)
-						processBuffer(data, ++currentIndex, callback)
-
-					})
-				})
-			})
-		})
-		
-		
-		//~let recordCount = Math.ceil(logContent.length / sliceCount)
-		//~, commentSlice = data.comments.splice(0, recordCount)
-		//~, infectionSlice = data.infections.splice(0, recordCount)
-
-		//~if (outFileIndex % 100 === 0)
-			//~console.log('sliceCount', sliceCount)
-		
-	}
-}
-
-
-/****************************
- *
  * Draw the visualization's building blocks in the SVG
  *
  *****************************/
@@ -684,8 +626,8 @@ function initLayout() {
 		 .attr('width', '100%')
 		 .attr('height', '100%')
 		 .attr('fill', bgFill)
-		 .attr('stroke', 'red') // temp
-		 .attr('stroke-width', '2px')
+		 //~.attr('stroke', 'red') // temp
+		 //~.attr('stroke-width', '2px')
 
 	// dimension measures
 //.. temp
@@ -748,15 +690,6 @@ let margin = 30
 // panels placeholders (temp)
 
 	// left
-	svg.append('rect')
-		 .attr('x', dimensions.leftCol.x)
-		 .attr('y', 2 * marginV + dimensions.smallPanel.height)
-		 .attr('width', dimensions.leftCol.width)
-		 .attr('height', dimensions.mediumPanel.height)
-		 .attr('fill', 'none')
-		 .attr('stroke-width', '2px')
-		 .attr('stroke', 'red')
-		 
 	//~svg.append('rect')
 		 //~.attr('x', dimensions.leftCol.x)
 		 //~.attr('y', 3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height)
@@ -765,24 +698,6 @@ let margin = 30
 		 //~.attr('fill', 'none')
 		 //~.attr('stroke-width', '2px')
 		 //~.attr('stroke', 'red')
-		 
-	// right
-		 
-	//~svg.append('rect')
-		 //~.attr('x', dimensions.rightCol.x - dimensions.rightCol.width)
-		 //~.attr('y', 2 * marginV + dimensions.mediumPanel.height)
-		 //~.attr('width', 2 * dimensions.rightCol.width)
-		 //~.attr('height', dimensions.largePanel.height)
-		 //~.attr('fill', 'none')
-		 //~.attr('stroke-width', '2px')
-		 //~.attr('stroke', 'red')
-
-	//~console.log('----------------------')
-	//~console.log(sizes)
-	//~console.log(positions)
-	//~console.log('----------------------')
-
-
 
 	// Graph chart panel - Center, background
 	 $chart = addPanel({
@@ -818,12 +733,34 @@ let margin = 30
 	// Legend panel
 	$legend = addPanel({
 		x: dimensions.leftCol.x
-		, y: 3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height
+		, y: 2 * marginV + dimensions.smallPanel.height
 		, width: dimensions.leftCol.width
 		, height: dimensions.mediumPanel.height
 	})
 	
+	// populate legend contents
 	addLegend()
+
+	// Playback panel
+	$playback = addPanel({
+		x: dimensions.leftCol.x
+		, y:  3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height
+		, width: dimensions.leftCol.width
+		, height: dimensions.mediumPanel.height
+	})
+
+	// Playback timestamp
+	 $timestamp = $playback.append('text')
+		.attr('id', 'timestamp')
+		.attr('x', positions.textX)
+		.attr('y', positions.textY)
+	
+	positions.textY += 2 * dimensions.rowHeight
+	
+	$speed = $playback.append('text')
+		.attr('id', 'speed')
+		.attr('x', positions.textX)
+		.attr('y', positions.textY)
 
 	// Metrics panel
 	$metrics = addPanel({
@@ -832,14 +769,8 @@ let margin = 30
 		, width: dimensions.rightCol.width
 		, height: dimensions.mediumPanel.height
 	})
-
-	// Playback timestamp
-	 $timestamp = $metrics.append('text')
-		  .attr('id', 'timestamp')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
-		  
-		  positions.textY += 2 * dimensions.rowHeight
+		 
+	positions.textY = 2 * margin + dimensions.rowHeight
 	  
 	 $infectionRate = $metrics.append('text')
 		  .attr('id', 'infectionRate')
@@ -940,6 +871,86 @@ function next() {
 	else
 		transformSteps[currentTransformStep++]()
 		
+}
+
+/****************************
+ *
+ * Process a log file(s) buffer dataset:
+ * 
+ *   * slice in multiple chunks if needed
+ *   * generate one frame image per chink
+ * 
+ * Recursive function, splices input log file content according to log timestamps and desired slice count
+ * 
+ * @param {object} data: content of one or more log files (comments + infections)
+ * @param {number} currentIndex - recursive calls count tracker
+ * @param {function} callback
+ *
+ *****************************/
+function processBuffer(data, currentIndex, callback) {
+	
+	let sliceCount = sliceCounter()
+	
+	console.log('processBuffer', currentIndex, sliceCount)
+	
+	
+	if (currentIndex === sliceCount)
+		callback()
+	else {
+
+		let commentSlice
+			, infectionSlice
+		
+		if (currentIndex === sliceCount - 1) {
+			// last slice, process all remaining data
+			// This is necessary in order not to miss the last line of comment file, which is generally the first record of next hour (minute 0)
+			commentSlice = data.comments
+			infectionSlice = data.infections
+		}
+		else {
+			// Identify the first record with minutes higher than (60 * currentIndex / sliceCount) threshold
+			let commentIndex = data.comments.findIndex(record => new Date(record[0]).getMinutes() > 59 * ((currentIndex+1) / sliceCount) )
+				, infectionIndex = data.infections.findIndex(record => new Date(record[0]).getMinutes() > 59 * ((currentIndex+1) / sliceCount) )
+				
+			commentSlice =  data.comments.splice(0, commentIndex)
+			
+			infectionSlice =  data.infections.splice(0, infectionIndex)
+		}
+			
+
+		addComments(commentSlice, function(err, res) {
+		
+			addInfections(infectionSlice, function(err, res) {
+
+//~console.log('processed slice', currentIndex, commentSlice.length, infectionSlice.length)
+//~processBuffer(data, ++currentIndex, callback)
+
+				if(graph.order === 0)
+					processBuffer(data, ++currentIndex, callback)
+				else {
+					
+					// Generate a frame with the updated dataset
+					updateMetrics(function(err, res) {
+						
+						exportImage(function(err, res) {
+							console.log('image exported', fileIndex)
+							processBuffer(data, ++currentIndex, callback)
+
+						})
+					})
+				}
+			})
+		})
+		
+		
+		//~let recordCount = Math.ceil(logContent.length / sliceCount)
+		//~, commentSlice = data.comments.splice(0, recordCount)
+		//~, infectionSlice = data.infections.splice(0, recordCount)
+
+		//~if (outFileIndex % 100 === 0)
+			//~console.log('sliceCount', sliceCount)
+		
+	}
 }
 
 /****************************
@@ -1162,8 +1173,16 @@ function updateSVG(callback) {
 	
 	//~console.time('updateSVG')
 	
-	// update metrics panel content
-	$timestamp.text(formatTimestamp(metadata.timestamp))
+	// update panels content
+	
+	//~$timestamp.text(formatTimestamp(metadata.timestamp))
+	
+	$timestamp.text('file ' + fileIndex + ' - slice ' + sliceCounter() + ' ' + formatTimestamp(metadata.timestamp))
+	
+	let fr = frameRate()
+		, speed = (fr === 120? '1/4' : fr === 60? '1/2' : fr === 15? '2' : '1') + 'x'
+
+	$speed.text(speed)
 	
 	$infectionCount.text(d3.format(",.0d")(metadata.infectionCount))
 	$commentCount.text(d3.format(",.0d")(metadata.commentCount))
@@ -1189,9 +1208,10 @@ function updateSVG(callback) {
 	let int
 
 	const t = svg.transition().duration(1000)
+				.ease(d3.easePolyInOut) 
 				.on('start', function() {
-					console.log('transition start')
-					int = setInterval(saveSVG, 1000 / 60) 
+					//~console.log('transition start')
+					int = setInterval(saveSVG, 1000 / frameRate()) 
 				})
 	
 	
@@ -1203,10 +1223,16 @@ function updateSVG(callback) {
 	$nodeSelection.enter()
 	  .append('circle')
 		.attr('class', 'node')
+		  .attr('cx', d => xScale(d.x))
+		  .attr('cy', d => yScale(d.y))
+		.attr('r', 3)
 		.attr('opacity', 0)
-		.attr('cx', d => (Math.random() - .5) * 40 + xScale(d.x))
-		.attr('cy', d => (Math.random() - .5) * 40 + yScale(d.y))
-		.attr('r', 1)
+	    .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
+	    .style('stroke', d => d.infectionAge && d.infectionAge === 12 ? whiteLike : 'black')
+		.style('stroke-width', d => d.infectionAge && d.infectionAge === 12 ? '1.5px' : '.5px')
+		.transition(t)
+		  .attr('r', (d, i) =>  { return radius(d.inDegree)})
+		  .attr('opacity', 1)
 		
 	$nodeSelection.exit()
 	  .remove()
@@ -1216,7 +1242,7 @@ function updateSVG(callback) {
 	  .attr('r', (d, i) =>  { return radius(d.inDegree)})
 	  .attr('cx', d => xScale(d.x))
 	  .attr('cy', d => yScale(d.y))
-	  .attr('fill', d => d.infectionAge? d.infectionAge === 10 ? patient0Color : color(d.infectionAge) : saneColor)
+	  .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
 	  .attr('opacity', 1)
 
     
@@ -1244,6 +1270,8 @@ function updateSVG(callback) {
     	})
 	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
 		.style('opacity', 0)
+		.transition(t).delay(500)
+		  .style('opacity', 1)
 
 	$linkSelection.exit()
 	  .remove()
@@ -1273,7 +1301,7 @@ function updateSVG(callback) {
 	
 	//~console.timeEnd('updateSVG')
 	t.on('end', function() {
-		console.log('transition end')
+		//~console.log('transition end')
 		if (int)
 			clearInterval(int)
 		callback()
