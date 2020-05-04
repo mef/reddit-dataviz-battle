@@ -74,8 +74,11 @@ const layoutIterationCount = function() { // FA2 layout iterations
 			case fileIndex === 12:
 				return 15
 				break
-			case fileIndex < 62:
+			case fileIndex < 32:
 				return 30
+				break
+			case fileIndex < 62:
+				return 15
 				break
 			//~case fileIndex < 100:
 				//~return 30
@@ -122,7 +125,8 @@ let d3n = new D3Node({styles:' \
 		.node {stroke-width: .5px; stroke: black;} \
 		text {fill: ' + whiteLike + '; font-size: 20px; font-family: Raleway; } \
 		.metric {text-anchor: end;} \
-		.text-large {font-size: 32px;} \
+		.heading {font-size: 28px;} \
+		.text-large {font-size: 36px;} \
 		#infectionRate {fill: red;} \
 		#infectionCount {fill: ' + recentInfectedColor + ';} \
 		#commentCount {fill: ' + saneColor + ';} \
@@ -144,6 +148,7 @@ let $captions
 	, $playback
 	, $speed
 	, $timestamp
+	, $top10
 	
 // mp4 generation
 // ffmpeg -r 30 -f image2 -s 1920x1080 -i hourly-%04d.svg -vcodec libx264 -crf 30  -pix_fmt yuv420p test.mp4
@@ -278,7 +283,7 @@ function addInfections(logData, callback) {
 	
 	// update playback timestamp
 	if (logData[0])
-		metadata.timestamp = logData[0][0]
+		metadata.timestamp = logData[logData.length-1][0]
 
 	callback()
 }
@@ -294,13 +299,13 @@ function addInfections(logData, callback) {
 function addLegend() {
 	
 	$legend.append('text')
+	  .attr('class', 'heading')
 	  .text('Legend')
-		//~.attr('class', 'text-large')
-		.attr('x', marginH)
-		.attr('y', dimensions.rowHeight * .75)
+	  //~.attr('class', 'text-large')
+	  .attr('x', marginH)
+	  .attr('y', dimensions.rowHeight * .75)
 	
 	// Shapes
-	
 	
 	$legend.append('circle')
 	  .attr('cx', marginH + 25) // align with rect
@@ -520,21 +525,30 @@ function formatData(callback) {
 			nodes: []
 			, edges: []
 		}
+		, infectors = []
 	
 	graph.forEachNode((node, attributes) => {
 
-// temp data quality check
-if (!attributes.x)
-	console.log(fileIndex, node, attributes)
-
+		const deg = graph.inDegree(node)
+		
 		res.nodes.push({
 			key: node
 			, x: attributes.x
 			, y: attributes.y
-			, inDegree: graph.inDegree(node)
+			, inDegree: deg
 			, infectionAge: attributes.infectionAge
 		})
+		
+		if (typeof attributes.infectionAge !== 'undefined' && deg > 0) {
+		
+			infectors.push({n: node, count: deg})
+
+		}
 	})
+	
+	res.mostDangerous = infectors.sort((a, b) => b.count - a.count).slice(0, 10)
+	
+	//~console.log('most dangerous', res.mostDangerous)
 	
 	graph.forEachEdge(function(edge, attributes, source, target) {
 		
@@ -729,21 +743,21 @@ let margin = 30
 	let $title = addPanel({
 		x: dimensions.leftCol.x
 		, y: marginV
-		, width: dimensions.leftCol.width * 1.7
+		, width: dimensions.leftCol.width * 2
 		, height: dimensions.smallPanel.height
 	})
 	
 	$title.append('text')
-		.text('Memonavirus - story of an epidemic')
+		.text('Memonavirus - Journey of an epidemic')
 		  .attr('class', 'text-large')
 		  .attr('x', marginH)
-		  .attr('y', (dimensions.smallPanel.height / 2 + 8))
+		  .attr('y', dimensions.smallPanel.height / 2 + 8)
 
 		
 	// Legend panel
 	$legend = addPanel({
 		x: dimensions.leftCol.x
-		, y: 2 * marginV + dimensions.smallPanel.height
+		, y: 2 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height * .5
 		, width: dimensions.leftCol.width
 		, height: dimensions.mediumPanel.height
 	})
@@ -754,22 +768,23 @@ let margin = 30
 	// Playback panel
 	$playback = addPanel({
 		x: dimensions.leftCol.x
-		, y:  3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height
+		, y:  3 * marginV + dimensions.smallPanel.height + dimensions.mediumPanel.height * 1.5
 		, width: dimensions.leftCol.width
-		, height: dimensions.mediumPanel.height
+		, height: dimensions.mediumPanel.height / 2
 	})
 
 	// Playback timestamp
 	 $timestamp = $playback.append('text')
 		.attr('id', 'timestamp')
-		.attr('x', positions.textX)
+	    .attr('class', 'heading')
+		.attr('x', marginH)
 		.attr('y', positions.textY)
 	
-	positions.textY += 2 * dimensions.rowHeight
+	positions.textY += 1.5 * dimensions.rowHeight
 	
 	$speed = $playback.append('text')
 		.attr('id', 'speed')
-		.attr('x', positions.textX)
+		.attr('x', dimensions.leftCol.width / 3)
 		.attr('y', positions.textY)
 
 	// Metrics panel
@@ -777,68 +792,70 @@ let margin = 30
 		x: dimensions.rightCol.x
 		, y: marginV
 		, width: dimensions.rightCol.width
-		, height: dimensions.mediumPanel.height
+		, height: dimensions.mediumPanel.height / 2
 	})
 		 
-	positions.textY = 2 * margin + dimensions.rowHeight
-	  
-	 $infectionRate = $metrics.append('text')
-		  .attr('id', 'infectionRate')
-		  .attr('class', 'metric text-large')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
+	$infectionRate = $metrics.append('text')
+	  .attr('id', 'infectionRate')
+	  .attr('class', 'metric text-large')
+	  .attr('x', dimensions.leftCol.width / 3)
+	  .attr('y', dimensions.smallPanel.height / 2 + 8)
 		  
 	$metrics.append('text')
-		  .text('infection rate')
-		  .attr('class', 'text-large')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
-		  .attr('dx', positions.dx)
+	  .text('Infection rate')
+	  .attr('class', 'text-large')
+	  .attr('x', dimensions.leftCol.width / 3)
+	  .attr('y', dimensions.smallPanel.height / 2 + 8)
+	  .attr('dx', positions.dx)
 		  
-		  positions.textY += dimensions.rowHeight
+	positions.textY = 2.2 * margin + dimensions.rowHeight
 
 		
-	 $infectionCount = $metrics.append('text')
-		  .attr('id', 'infectionCount')
-		  .attr('class', 'metric')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
+	$infectionCount = $metrics.append('text')
+	  .attr('id', 'infectionCount')
+	  .attr('class', 'metric')
+	  .attr('x', dimensions.leftCol.width / 3)
+	  .attr('y', positions.textY)
 				
 	$metrics.append('text')
-		  .text('infections')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
-		  .attr('dx', positions.dx)
+	  .text('Infections')
+	  .attr('x', dimensions.leftCol.width / 3)
+	  .attr('y', positions.textY)
+	  .attr('dx', positions.dx)
 		
-		  positions.textY += dimensions.rowHeight / 2
+	positions.textY += dimensions.rowHeight / 1.8
 
 
-	 $commentCount = $metrics.append('text')
-		  .attr('id', 'commentCount')
-		  .attr('class', 'metric')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
+	$commentCount = $metrics.append('text')
+	  .attr('id', 'commentCount')
+	  .attr('class', 'metric')
+	  .attr('x', dimensions.leftCol.width / 3)
+	  .attr('y', positions.textY)
 				
 	$metrics.append('text')
-		  .text('Comments')
-		  .attr('x', positions.textX)
-		  .attr('y', positions.textY)
-		  .attr('dx', positions.dx)
+	  .text('Comments')
+	  .attr('x', dimensions.leftCol.width / 3)
+	  .attr('y', positions.textY)
+	  .attr('dx', positions.dx)
 
 
 	// Captions panel
 
 	$captions = addPanel({
-		x: dimensions.rightCol.x - dimensions.rightCol.width * .6
+		x: dimensions.rightCol.x
 		, y: 2 * marginV + dimensions.mediumPanel.height
-		, width: 1.6 * dimensions.rightCol.width
+		, width: dimensions.rightCol.width
 		, height: dimensions.largePanel.height
 	})
 
 	$captions.append('text')
-		  .text('Storytelling text goes here')
-		  .attr('x', marginH)
-		  .attr('y', dimensions.rowHeight)
+	  .attr('class', 'heading')
+	  .text('Most dangerous users')
+	  .attr('x', marginH)
+	  .attr('y', dimensions.rowHeight)
+
+	$top10 = $captions.append('g')
+	  .attr('transform', 'translate(' + dimensions.leftCol.width / 3 + ',' + dimensions.rowHeight * 2 + ')')
 		 
 	next()
 }
@@ -858,7 +875,12 @@ function listFiles() {
 			
 			files = stdout.split('\n').map(path => path.replace('data', 'data/raw'))
 			
-			//~console.log('files', files)
+			//remove the last two invalid entry from the array
+			files.pop()
+			
+			console.log('files', files.length)
+			console.log('last files', files[files.length-2])
+			console.log('last files', files[files.length-1])
 			
 			console.log('...all files identified')			
 
@@ -990,7 +1012,7 @@ function processLogFile(buff) {
 			, count: 0
 		}
 		
-console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile', outFileIndex)
+console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile', (outFileIndex + 1))
 
 		// Cleanup comments out of graph when processing first file after 24h
 		if (fileIndex === 62) {
@@ -1043,7 +1065,6 @@ console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile
 						fileIndex += 2
 						
 						if (buff.count === fileCount()) {
-						//~if (buff.count === 3) {
 							processBuffer(buff, 0, function(err, res) {
 								processLogFile()
 							})
@@ -1187,18 +1208,37 @@ function updateSVG(callback) {
 	
 	// update panels content
 	
-	//~$timestamp.text(formatTimestamp(metadata.timestamp))
-	
-	$timestamp.text('file ' + fileIndex + ' - slice ' + sliceCounter() + ' ' + formatTimestamp(metadata.timestamp))
+	$timestamp.text(formatTimestamp(metadata.timestamp))
+// temp	
+	//~$timestamp.text('file ' + fileIndex + ' - slice ' + sliceCounter() + ' ' + formatTimestamp(metadata.timestamp))
 	
 	let fr = frameRate()
 		, speed = (fr === 120? '1/4' : fr === 60? '1/2' : fr === 15? '2' : '1') + 'x'
 
 	$speed.text(speed)
 	
+	// countagion statistics
+	
 	$infectionCount.text(d3.format(",.0d")(metadata.infectionCount))
 	$commentCount.text(d3.format(",.0d")(metadata.commentCount))
 	$infectionRate.text(d3.format(".2%")(metadata.infectionCount / metadata.commentCount))
+	
+	$top10.html('')
+	
+	d3Graph.mostDangerous.forEach( (infector, i) => {
+		
+		$top10.append('text')
+		  .text(infector.count)
+		  .attr('class', 'metric')
+		  .attr('x', 0)
+		  .attr('y', (2.2 * i ) + 'em')
+		
+		$top10.append('text')
+		  .text(infector.n)
+		  .attr('x', 10)
+		  .attr('y', (2.2 * i ) + 'em')
+		  
+   })
 	
 	//~console.log('Update graph image...')
 		
