@@ -15,51 +15,58 @@ let files // array of log files from data source
 	, fileIndex = 0
 	, outFileIndex = 0
 	, edgeIndexMap = {}
+	, filePrefix = 'hourly'
 	
 // variable processing of volumes based on progress
 const layoutIterationCount = function() { // FA2 layout iterations
 		switch(true) {
-			case fileIndex > 300:
+			case fileIndex >= 350: // over week 1
 				return 1000
 				break
-			case fileIndex > 66:
+			case fileIndex > 62: // over day 1
 				return 300
 				break
+			case fileIndex === 62:
+				return 1000
+				break
 			default:
-				return 150
+				return 300
 				break
 		}
 		
 	}
 	, fileCount = function() { // number of hourly files to process in one image grame
-		return 3
+		//~return 3
 		
-		//~switch(true) {
-			//~case fileIndex > 300:
-				//~return 5 * 24
-				//~break
-			//~case fileIndex > 66:
-				//~return 24
-				//~break
-			//~default:
-				//~return 1
-				//~break
-		//~}
+		switch(true) {
+			case fileIndex >= 350:
+				return 7 * 24
+				break
+			case fileIndex >= 62:
+				return 24
+				break
+			default:
+				return 1
+				break
+		}
 		
 	}
 	, sliceCounter = function() { // number of slices one file should be chunked into
-		return 1
-		//~switch(true) {
-			//~case fileIndex <= 12:
-				//~return 2
-				//~break
-			//~case fileIndex < 66:
-				//~return 6
-				//~break
-			//~default:
-				//~return 1
-				//~break
-		//~}
+		//~return 1
+		switch(true) {
+			case fileIndex <= 12:
+				return 2
+				break
+			case fileIndex === 60:
+				return 1 // Last available slice for the last hour of day 1
+				break
+			case fileIndex < 62:
+				return 6 // 10 minutes intervals
+				break
+			default:
+				return 1
+				break
+		}
 		
 	}
 	, frameRate = function() { // number of slices one file should be chunked into
@@ -67,12 +74,12 @@ const layoutIterationCount = function() { // FA2 layout iterations
 			case fileIndex === 12:
 				return 15
 				break
-			//~case fileIndex < 66:
-				//~return 60
-				//~break
-			case fileIndex < 100:
+			case fileIndex < 62:
 				return 30
 				break
+			//~case fileIndex < 100:
+				//~return 30
+				//~break
 			default:
 				return 15
 				break
@@ -139,7 +146,11 @@ let $captions
 	, $timestamp
 	
 // mp4 generation
-// ffmpeg -r 25 -f image2 -s 1920x1080 -i out-%04d.svg -vcodec libx264 -crf 25  -pix_fmt yuv420p test.mp4
+// ffmpeg -r 30 -f image2 -s 1920x1080 -i hourly-%04d.svg -vcodec libx264 -crf 30  -pix_fmt yuv420p test.mp4
+
+// Cross-fade daily frames
+// https://gist.github.com/anguyen8/d0630b6aef6c1cd79b9a1341e88a573e
+ 
 
 // music: Rimsky-Korsakov: "Flight of the Bumble-Bee"
 // soundrack alternate Grieg – In the Hall of the Mountain King
@@ -281,7 +292,6 @@ function addInfections(logData, callback) {
  *
  *****************************/
 function addLegend() {
-	
 	
 	$legend.append('text')
 	  .text('Legend')
@@ -955,15 +965,15 @@ function processBuffer(data, currentIndex, callback) {
 
 /****************************
  *
- * Append data buffer with one comment and infection file until fileCount is met.
+ * Append data buffer with one comment and one infection file until fileCount is met.
  * 
  * @param {object} buff buffer of comments and infections to be included in next frame
  *
  *****************************/
 function processLogFile(buff) {
 	
-	//~if (fileIndex === files.length) {
-	if (fileIndex === 25) {
+	if (fileIndex === files.length) {
+	//~if (fileIndex === 250) {
 		console.log('... All log files processed')
 		next()
 	}
@@ -983,8 +993,10 @@ function processLogFile(buff) {
 console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile', outFileIndex)
 
 		// Cleanup comments out of graph when processing first file after 24h
-		if (fileIndex === 62)
+		if (fileIndex === 62) {
 			filterComments()
+			filePrefix = 'aggregate'
+		}
 		
 		// get comments file contents
 		readFile(files[fileIndex], function(err, file) {
@@ -1118,7 +1130,7 @@ function saveSVG(callback) {
 	//~console.log('Save graph image file...')
 	outFileIndex++
 	
-	let outputFileName = 'out-' + ('' + outFileIndex).padStart(4, '0') + '.svg'
+	let outputFileName = filePrefix + '-' + ('' + outFileIndex).padStart(4, '0') + '.svg'
 	
 	fs.writeFile(__dirname + '/../data/staging/svg/' + outputFileName, d3n.svgString(), function(err, res) {
 		if (err)
@@ -1204,108 +1216,156 @@ function updateSVG(callback) {
 	radius.domain(d3.extent(d3Graph.nodes, d => d.inDegree))
 	
 	color.domain([10, fileIndex])
-	
-	let int
 
-	const t = svg.transition().duration(1000)
-				.ease(d3.easePolyInOut) 
-				.on('start', function() {
-					//~console.log('transition start')
-					int = setInterval(saveSVG, 1000 / frameRate()) 
-				})
-	
-	
 
 	let $nodeSelection = $node.selectAll('.node')
 		  .data(d3Graph.nodes, d => d.key)
 		  //~.data(d3Graph.nodes.slice(0, 100000), d => d.key)
-		  
-	$nodeSelection.enter()
-	  .append('circle')
-		.attr('class', 'node')
-		  .attr('cx', d => xScale(d.x))
-		  .attr('cy', d => yScale(d.y))
-		.attr('r', 3)
-		.attr('opacity', 0)
-	    .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
-	    .style('stroke', d => d.infectionAge && d.infectionAge === 12 ? whiteLike : 'black')
-		.style('stroke-width', d => d.infectionAge && d.infectionAge === 12 ? '1.5px' : '.5px')
-		.transition(t)
-		  .attr('r', (d, i) =>  { return radius(d.inDegree)})
-		  .attr('opacity', 1)
+    
+	$linkSelection = $link.selectAll('.link')
+	  .data(d3Graph.edges, d => d.key)
+	  
 		
 	$nodeSelection.exit()
 	  .remove()
 
-	// update selection
-	$nodeSelection.transition(t)
-	  .attr('r', (d, i) =>  { return radius(d.inDegree)})
-	  .attr('cx', d => xScale(d.x))
-	  .attr('cy', d => yScale(d.y))
-	  .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
-	  .attr('opacity', 1)
-
-    
-	$linkSelection = $link.selectAll('.link')
-	  .data(d3Graph.edges, d => d.key)
-	
-	$linkSelection.enter()
-	  .append('path')
-		.attr('class', 'link')
-    	.attr('d', (d, i) => {
-    		try {
-				let dx = xScale(d3Graph.nodes[d.target].x) - yScale(d3Graph.nodes[d.source].x)
-    				  , dy = yScale(d3Graph.nodes[d.target].y) - yScale(d3Graph.nodes[d.source].y)
-    				  , dr = Math.sqrt(dx * dx + dy * dy)
-    				  , sweep = i%2 === 0 ? 0 : 1
-    				  
-    			return 'M' + xScale(d3Graph.nodes[d.source].x) + ',' + yScale(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + xScale(d3Graph.nodes[d.target].x) + ',' + yScale(d3Graph.nodes[d.target].y)
-    			  
-    			  
-    		}
-    		catch(e) {
-    			console.log('missing source', d.source)  
-    			throw e
-    		}
-    	})
-	    .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
-		.style('opacity', 0)
-		.transition(t).delay(500)
-		  .style('opacity', 1)
-
 	$linkSelection.exit()
 	  .remove()
-	  
-	// update selection
-	$linkSelection.transition(t)
-	  .attr('d', (d, i) => {
-		  try {
-			let dx = xScale(d3Graph.nodes[d.target].x) - yScale(d3Graph.nodes[d.source].x)
-				  , dy = yScale(d3Graph.nodes[d.target].y) - yScale(d3Graph.nodes[d.source].y)
-				  , dr = Math.sqrt(dx * dx + dy * dy)
-				  , sweep = i%2 === 0 ? 0 : 1
-				  
-			  return 'M' + xScale(d3Graph.nodes[d.source].x) + ',' + yScale(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + xScale(d3Graph.nodes[d.target].x) + ',' + yScale(d3Graph.nodes[d.target].y)
-			  
-			  
-		  }
-		  catch(e) {
-			console.log('missing source', d.source)  
-			throw e
-		  }
-	  })
-	  .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
-	  .style('opacity', 1)
-			  
-	//~console.log('... done')
 	
-	//~console.timeEnd('updateSVG')
-	t.on('end', function() {
-		//~console.log('transition end')
-		if (int)
-			clearInterval(int)
-		callback()
-	})
+	if(fileCount() === 1) {
+		let transitionInterval
+
+		const t = svg.transition().duration(1000)
+					.ease(d3.easePolyInOut) 
+					.on('start', function() {
+						//~console.log('transition start')
+						transitionInterval = setInterval(saveSVG, 1000 / frameRate()) 
+					})
+					
+		$nodeSelection.enter()
+		  .append('circle')
+			.attr('class', 'node')
+			  .attr('cx', d => xScale(d.x))
+			  .attr('cy', d => yScale(d.y))
+			.attr('r', 3)
+			.attr('opacity', 0)
+			.attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
+			.style('stroke', d => d.infectionAge && d.infectionAge === 12 ? whiteLike : 'black')
+			.style('stroke-width', d => d.infectionAge && d.infectionAge === 12 ? '1.5px' : '.5px')
+			.transition(t)
+			  .attr('r', (d, i) =>  { return radius(d.inDegree)})
+			  .attr('opacity', 1)
+
+		// update selection
+		$nodeSelection.transition(t)
+		  .attr('r', (d, i) =>  { return radius(d.inDegree)})
+		  .attr('cx', d => xScale(d.x))
+		  .attr('cy', d => yScale(d.y))
+		  .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
+		  .attr('opacity', 1)
+
+		
+		$linkSelection.enter()
+		  .append('path')
+			.attr('class', 'link')
+			.attr('d', (d, i) => {
+				try {
+					let dx = xScale(d3Graph.nodes[d.target].x) - yScale(d3Graph.nodes[d.source].x)
+						  , dy = yScale(d3Graph.nodes[d.target].y) - yScale(d3Graph.nodes[d.source].y)
+						  , dr = Math.sqrt(dx * dx + dy * dy)
+						  , sweep = i%2 === 0 ? 0 : 1
+						  
+					return 'M' + xScale(d3Graph.nodes[d.source].x) + ',' + yScale(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + xScale(d3Graph.nodes[d.target].x) + ',' + yScale(d3Graph.nodes[d.target].y)
+					  
+					  
+				}
+				catch(e) {
+					console.log('missing source', d.source)  
+					throw e
+				}
+			})
+			.style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
+			.style('opacity', 0)
+			.transition(t).delay(500)
+			  .style('opacity', 1)
+		  
+		// update selection
+		$linkSelection.transition(t)
+		  .attr('d', (d, i) => {
+			  try {
+				let dx = xScale(d3Graph.nodes[d.target].x) - yScale(d3Graph.nodes[d.source].x)
+					  , dy = yScale(d3Graph.nodes[d.target].y) - yScale(d3Graph.nodes[d.source].y)
+					  , dr = Math.sqrt(dx * dx + dy * dy)
+					  , sweep = i%2 === 0 ? 0 : 1
+					  
+				  return 'M' + xScale(d3Graph.nodes[d.source].x) + ',' + yScale(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + xScale(d3Graph.nodes[d.target].x) + ',' + yScale(d3Graph.nodes[d.target].y)
+				  
+				  
+			  }
+			  catch(e) {
+				console.log('missing source', d.source)  
+				throw e
+			  }
+		  })
+		  .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
+		  .style('opacity', 1)
+				  
+		//~console.log('... done')
+		
+		//~console.timeEnd('updateSVG')
+		t.on('end', function() {
+			//~console.log('transition end')
+			if (transitionInterval)
+				clearInterval(transitionInterval)
+			callback()
+		})
+		
+	}
+	else {
+	// the updated data groups multiple files, only generate one frame, no d3 transition
+	console.log('no transition')
+		$nodeSelection.enter()
+		  .append('circle')
+			.attr('class', 'node')
+			.style('stroke', d => d.infectionAge && d.infectionAge === 12 ? whiteLike : 'black')
+			.style('stroke-width', d => d.infectionAge && d.infectionAge === 12 ? '1.5px' : '.5px')
+
+		// update selection
+		$nodeSelection
+		  .attr('r', (d, i) =>  { return radius(d.inDegree)})
+		  .attr('cx', d => xScale(d.x))
+		  .attr('cy', d => yScale(d.y))
+		  .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
+
+		
+		$linkSelection.enter()
+		  .append('path')
+			.attr('class', 'link')
+		  
+		// update selection
+		$linkSelection
+		  .attr('d', (d, i) => {
+			  try {
+				let dx = xScale(d3Graph.nodes[d.target].x) - yScale(d3Graph.nodes[d.source].x)
+					  , dy = yScale(d3Graph.nodes[d.target].y) - yScale(d3Graph.nodes[d.source].y)
+					  , dr = Math.sqrt(dx * dx + dy * dy)
+					  , sweep = i%2 === 0 ? 0 : 1
+					  
+				  return 'M' + xScale(d3Graph.nodes[d.source].x) + ',' + yScale(d3Graph.nodes[d.source].y) + 'A' + dr + ',' + dr + ' 0 0,' + sweep + ' ' + xScale(d3Graph.nodes[d.target].x) + ',' + yScale(d3Graph.nodes[d.target].y)
+				  
+				  
+			  }
+			  catch(e) {
+				console.log('missing source', d.source)  
+				throw e
+			  }
+		  })
+		  .style('stroke',  d => d3Graph.nodes[d.source].infectionAge? color(d3Graph.nodes[d.source].infectionAge) : saneColor)
+		  
+		saveSVG(function(err, res) {
+			callback()
+		})
+	}
 
 }
 
