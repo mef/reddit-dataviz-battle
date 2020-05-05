@@ -145,6 +145,7 @@ let $captions
 	, $link
 	, $metrics
 	, $node
+	, $nodeLabel
 	, $playback
 	, $speed
 	, $timestamp
@@ -156,6 +157,10 @@ let $captions
 // Cross-fade daily frames
 // https://gist.github.com/anguyen8/d0630b6aef6c1cd79b9a1341e88a573e
  
+//Convert to other type
+// find . -name "aggregate-*.svg" -print0 | while read -d $'\0' file; do convert "$file" "${file%.svg}.png"; done
+
+
 
 // music: Rimsky-Korsakov: "Flight of the Bumble-Bee"
 // soundrack alternate Grieg – In the Hall of the Mountain King
@@ -541,7 +546,7 @@ function formatData(callback) {
 		
 		if (typeof attributes.infectionAge !== 'undefined' && deg > 0) {
 		
-			infectors.push({n: node, count: deg})
+			infectors.push({name: node, count: deg})
 
 		}
 	})
@@ -738,6 +743,9 @@ let margin = 30
 
 	$node = $chart.append('g')
 	  .attr('id', 'nodes')
+
+	$nodeLabel = $chart.append('g')
+	  .attr('id', 'nodeLabels')
 		
 	// Title panel
 	let $title = addPanel({
@@ -1234,7 +1242,7 @@ function updateSVG(callback) {
 		  .attr('y', (2.2 * i ) + 'em')
 		
 		$top10.append('text')
-		  .text(infector.n)
+		  .text(infector.name)
 		  .attr('x', 10)
 		  .attr('y', (2.2 * i ) + 'em')
 		  
@@ -1261,14 +1269,24 @@ function updateSVG(callback) {
 	let $nodeSelection = $node.selectAll('.node')
 		  .data(d3Graph.nodes, d => d.key)
 		  //~.data(d3Graph.nodes.slice(0, 100000), d => d.key)
+
+	let labelData = d3Graph.nodes.filter(d => d3Graph.mostDangerous.slice(0, 5).map(d => d.name).includes(d.key))
+
+
+//~console.log('levaleData
+	let $labelSelection = $nodeLabel.selectAll('.nodeLabel')
+		  .data(labelData, d => d.key)
     
-	$linkSelection = $link.selectAll('.link')
+	let $linkSelection = $link.selectAll('.link')
 	  .data(d3Graph.edges, d => d.key)
 	  
 		
 	$nodeSelection.exit()
 	  .remove()
 
+	$labelSelection.exit()
+	  .remove()
+	  
 	$linkSelection.exit()
 	  .remove()
 	
@@ -1276,7 +1294,7 @@ function updateSVG(callback) {
 		let transitionInterval
 
 		const t = svg.transition().duration(1000)
-					.ease(d3.easePolyInOut) 
+					//~.ease(d3.easePolyInOut) 
 					.on('start', function() {
 						//~console.log('transition start')
 						transitionInterval = setInterval(saveSVG, 1000 / frameRate()) 
@@ -1285,8 +1303,8 @@ function updateSVG(callback) {
 		$nodeSelection.enter()
 		  .append('circle')
 			.attr('class', 'node')
-			  .attr('cx', d => xScale(d.x))
-			  .attr('cy', d => yScale(d.y))
+			.attr('cx', d => xScale(d.x))
+			.attr('cy', d => yScale(d.y))
 			.attr('r', 3)
 			.attr('opacity', 0)
 			.attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
@@ -1302,6 +1320,24 @@ function updateSVG(callback) {
 		  .attr('cx', d => xScale(d.x))
 		  .attr('cy', d => yScale(d.y))
 		  .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
+		  .attr('opacity', 1)
+
+		
+		$labelSelection.enter()
+		  .append('text')
+			.attr('class', 'nodeLabel')
+			.attr('x', d => xScale(d.x) + 20)
+			.attr('y', d => yScale(d.y) + 9)
+			.text(d => d.key)
+			.attr('opacity', 0)
+			.attr('fill', whiteLike)
+			.transition(t)
+			  .attr('opacity', 1)
+
+		// update selection
+		$labelSelection.transition(t)
+		  .attr('x', d => xScale(d.x) + 20)
+		  .attr('y', d => yScale(d.y) + 9)
 		  .attr('opacity', 1)
 
 		
@@ -1363,7 +1399,9 @@ function updateSVG(callback) {
 	}
 	else {
 	// the updated data groups multiple files, only generate one frame, no d3 transition
+	
 	console.log('no transition')
+	
 		$nodeSelection.enter()
 		  .append('circle')
 			.attr('class', 'node')
@@ -1376,6 +1414,20 @@ function updateSVG(callback) {
 		  .attr('cx', d => xScale(d.x))
 		  .attr('cy', d => yScale(d.y))
 		  .attr('fill', d => d.infectionAge? d.infectionAge === 12 ? patient0Color : color(d.infectionAge) : saneColor)
+		  
+		$labelSelection.enter()
+		  .append('text')
+			.attr('class', 'nodeLabel')
+			.attr('x', d => xScale(d.x) + 20)
+			.attr('y', d => yScale(d.y) + 9)
+			.text(d => d.key)
+			.attr('fill', whiteLike)
+
+		// update selection
+		$labelSelection
+		  .attr('x', d => xScale(d.x) + 20)
+		  .attr('y', d => yScale(d.y) + 9)
+		  .attr('opacity', 1)
 
 		
 		$linkSelection.enter()
