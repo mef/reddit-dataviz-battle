@@ -36,7 +36,7 @@ const layoutIterationCount = function() { // FA2 layout iterations
 		
 	}
 	, fileCount = function() { // number of hourly files to process in one image grame
-		//~return 3
+		//~return 1
 		
 		switch(true) {
 			case fileIndex >= 350:
@@ -93,6 +93,7 @@ const layoutIterationCount = function() { // FA2 layout iterations
 		commentCount: 0
 		, infectionCount: 0
 		, timestamp: null
+		, infectionStartDate: new Date('2020-03-20 19:59:59.0')
 	}
 
 let width = 1920
@@ -123,6 +124,7 @@ let width = 1920
 let d3n = new D3Node({styles:' \
 		.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} \
 		.node {stroke-width: .5px; stroke: black;} \
+		.nodeLabel {font-size: 22px; paint-order: stroke; stroke: ' + bgFill +'; stroke-width: 2; font-weight: bold;} \
 		text {fill: ' + whiteLike + '; font-size: 20px; font-family: Raleway; } \
 		.metric {text-anchor: end;} \
 		.heading {font-size: 28px;} \
@@ -147,7 +149,7 @@ let $captions
 	, $node
 	, $nodeLabel
 	, $playback
-	, $speed
+	, $elapsed
 	, $timestamp
 	, $top10
 	
@@ -784,16 +786,18 @@ let margin = 30
 	// Playback timestamp
 	 $timestamp = $playback.append('text')
 		.attr('id', 'timestamp')
-	    .attr('class', 'heading')
-		.attr('x', marginH)
+		.attr('x', dimensions.leftCol.width / 2)
 		.attr('y', positions.textY)
+		.style('text-anchor', 'middle')
 	
-	positions.textY += 1.5 * dimensions.rowHeight
+	positions.textY += 1 * dimensions.rowHeight
 	
-	$speed = $playback.append('text')
+	$elapsed = $playback.append('text')
 		.attr('id', 'speed')
-		.attr('x', dimensions.leftCol.width / 3)
+	    .attr('class', 'heading')
+		.attr('x', dimensions.leftCol.width / 2)
 		.attr('y', positions.textY)
+		.style('text-anchor', 'middle')
 
 	// Metrics panel
 	$metrics = addPanel({
@@ -1222,8 +1226,13 @@ function updateSVG(callback) {
 	
 	let fr = frameRate()
 		, speed = (fr === 120? '1/4' : fr === 60? '1/2' : fr === 15? '2' : '1') + 'x'
+		
+	//~'H+' + metadata.timestamp - metadata.infectionStartDate / 1000 / 60 / 60
+	
+	let summaryDate = fileIndex >= 62 ? 'D+' + Math.floor((new Date(metadata.timestamp) - metadata.infectionStartDate) / 1000 / 60 / 60 / 24) : 'H+' + Math.floor((new Date(metadata.timestamp) - metadata.infectionStartDate) / 1000 / 60 / 60)
 
-	$speed.text(speed)
+	//~$elapsed.text(speed)
+	$elapsed.text(summaryDate)
 	
 	// countagion statistics
 	
