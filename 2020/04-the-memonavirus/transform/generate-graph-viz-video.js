@@ -1118,7 +1118,8 @@ console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile
 							
 						fileIndex += 2
 						
-						if (buff.count === fileCount()) {
+						if (buff.count === fileCount() || fileIndex === 1344) {
+							// process buffer once enough files are buffered, or if last file has been read.
 							processBuffer(buff, 0, function(err, res) {
 								processLogFile()
 							})
@@ -1138,41 +1139,6 @@ console.log('processing file', fileIndex, ' - ', files[fileIndex], 'into outFile
 		})
 		
 	}
-}
-
-/****************************
- *
- * Process infection log files and generate relevant frames
- *
- *****************************/
-function processInfectionFile() {
-	readFile(files[fileIndex+1], function(err, file) {
-		if(err) {
-			// invalid file, skip
-
-			fileIndex += 2
-			
-			// process next hour slot
-			processLogFile()
-		}
-		else {
-			
-			let logContent = file.split('\n')
-				, sliceCount = sliceCount()
-
-			if (outFileIndex % 100 === 0)
-				console.log('sliceCount', sliceCount)
-			
-			generateFrames(logContent, Math.ceil(logContent.length / sliceCount), function(err, res) {
-
-				fileIndex += 2
-				
-				// process next hour slot
-				processLogFile()
-				
-			})
-		}
-	})
 }
 
 /****************************
@@ -1271,7 +1237,7 @@ function updateSVG(callback) {
 		
 	//~'H+' + metadata.timestamp - metadata.infectionStartDate / 1000 / 60 / 60
 	
-	let summaryDate = fileIndex >= 62 ? 'D+' + Math.floor((new Date(metadata.timestamp) - metadata.infectionStartDate) / 1000 / 60 / 60 / 24) : 'H+' + Math.floor((new Date(metadata.timestamp) - metadata.infectionStartDate) / 1000 / 60 / 60)
+	let summaryDate = fileIndex >= 62 ? 'D+' + Math.ceil((new Date(metadata.timestamp) - metadata.infectionStartDate) / 1000 / 60 / 60 / 24) : 'H+' + Math.floor((new Date(metadata.timestamp) - metadata.infectionStartDate) / 1000 / 60 / 60)
 
 	//~$elapsed.text(speed)
 	$elapsed.text(summaryDate)
