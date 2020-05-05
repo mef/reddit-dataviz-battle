@@ -120,11 +120,13 @@ let width = 1920
 	  //.range([d3.rgb("#B429FD"), d3.rgb('#FD29EA')])
 	  .range([d3.rgb(lessRecentInfectedColor),d3.rgb(recentInfectedColor)])
 	  //~const color = d3.scaleSequential(d3.interpolateViridis)
+	, progressScale
+	, infectionRateScale
 
 let d3n = new D3Node({styles:' \
 		.link {fill:none; stroke-width: 3; stroke-opacity: .5; mix-blend-mode: multiply;} \
 		.node {stroke-width: .5px; stroke: black;} \
-		.nodeLabel {font-size: 22px; paint-order: stroke; stroke: ' + bgFill +'; stroke-width: 2; font-weight: bold;} \
+		.nodeLabel {font-size: 22px; paint-order: stroke; stroke: ' + bgFill +'; stroke-width: 1; font-weight: bold;} \
 		text {fill: ' + whiteLike + '; font-size: 20px; font-family: Raleway; } \
 		.metric {text-anchor: end;} \
 		.heading {font-size: 28px;} \
@@ -141,6 +143,7 @@ let d3n = new D3Node({styles:' \
 let $captions
 	, $chart
 	, $commentCount
+	, $elapsed
 	, $infectionCount
 	, $infectionRate
 	, $legend
@@ -149,7 +152,8 @@ let $captions
 	, $node
 	, $nodeLabel
 	, $playback
-	, $elapsed
+	, $progressBar
+	, $infectionRateBar
 	, $timestamp
 	, $top10
 	
@@ -738,11 +742,11 @@ let margin = 30
 		, height: dimensions.centerCol.width
 		, bg: false
 	})
-
+	  
 	$link = $chart.append('g')
 	  .attr('id', 'links')
 	  .style('opacity', .7)
-
+	  
 	$node = $chart.append('g')
 	  .attr('id', 'nodes')
 
@@ -785,19 +789,44 @@ let margin = 30
 
 	// Playback timestamp
 	 $timestamp = $playback.append('text')
-		.attr('id', 'timestamp')
-		.attr('x', dimensions.leftCol.width / 2)
-		.attr('y', positions.textY)
-		.style('text-anchor', 'middle')
+	  .attr('id', 'timestamp')
+	  .attr('x', dimensions.leftCol.width / 2)
+	  .attr('y', positions.textY)
+	  .style('text-anchor', 'middle')
 	
 	positions.textY += 1 * dimensions.rowHeight
 	
+	
+	// Playback elapsed time
 	$elapsed = $playback.append('text')
-		.attr('id', 'speed')
-	    .attr('class', 'heading')
-		.attr('x', dimensions.leftCol.width / 2)
-		.attr('y', positions.textY)
-		.style('text-anchor', 'middle')
+	  .attr('id', 'speed')
+	  .attr('class', 'heading')
+	  .attr('x', dimensions.leftCol.width / 2)
+	  .attr('y', positions.textY)
+	  .style('text-anchor', 'middle')
+
+	let $progressGradient = svg.select('defs').append('linearGradient')
+		  .attr('id', 'progressGradient')
+	
+	progressScale = d3.scaleLinear()
+		.range([0, dimensions.leftCol.width - 2])
+	
+	$progressGradient.append('stop')
+	  .attr('offset', '0%')
+	  .attr('stop-color', '#5229fd')
+	
+	$progressGradient.append('stop')
+	  .attr('offset', '100%')
+	  .attr('stop-color', '#cf29fd')
+
+	// Playback progress bar
+	$progressBar = $playback.append('rect')
+	  .attr('fill', 'url("#progressGradient")')
+	  .attr('x', 1)
+	  .attr('y', dimensions.mediumPanel.height / 2 - 11)
+	  .attr('width', 0)
+	  .attr('height', 10)
+
 
 	// Metrics panel
 	$metrics = addPanel({
@@ -806,6 +835,17 @@ let margin = 30
 		, width: dimensions.rightCol.width
 		, height: dimensions.mediumPanel.height / 2
 	})
+
+	infectionRateScale = d3.scaleLinear()
+		.range([0, dimensions.rightCol.width - 2])
+		 
+	// Infection rate progress bar
+	$infectionRateBar = $metrics.append('rect')
+	  .attr('fill', 'red')
+	  .attr('x', 1)
+	  .attr('y', 1)
+	  .attr('width', 0)
+	  .attr('height', 10)
 		 
 	$infectionRate = $metrics.append('text')
 	  .attr('id', 'infectionRate')
@@ -890,9 +930,11 @@ function listFiles() {
 			//remove the last two invalid entry from the array
 			files.pop()
 			
+			
+			progressScale.domain([0, files.length-1])
 			console.log('files', files.length)
-			console.log('last files', files[files.length-2])
-			console.log('last files', files[files.length-1])
+			//~console.log('last files', files[files.length-2])
+			//~console.log('last files', files[files.length-1])
 			
 			console.log('...all files identified')			
 
@@ -1234,7 +1276,11 @@ function updateSVG(callback) {
 	//~$elapsed.text(speed)
 	$elapsed.text(summaryDate)
 	
-	// countagion statistics
+	$progressBar.attr('width', progressScale(fileIndex))
+	
+	// contagion statistics
+	
+	$infectionRateBar.attr('width', infectionRateScale(metadata.infectionCount / metadata.commentCount))
 	
 	$infectionCount.text(d3.format(",.0d")(metadata.infectionCount))
 	$commentCount.text(d3.format(",.0d")(metadata.commentCount))
