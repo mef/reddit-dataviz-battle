@@ -64,9 +64,9 @@ This first step of the transform process builds a graph of comments and infectio
 npm run transform:build-graph
 ```
 
-### Compute statistics
+### Compute general statistics
 
-This script takes pulls figures out of the graph dataset:
+This script pulls figures out of the graph dataset:
 
 * timeline of infections (and commenting activity): `./data/dist/infectionCurve.json`.
 * (to be continued)
@@ -74,6 +74,18 @@ This script takes pulls figures out of the graph dataset:
 
 ```
 npm run transform:compute-stats
+```
+
+### Compute graph statistics
+
+This script runs the following graph processing algorithms, saves the resulting graph export as well as a rendered graph visualization.
+
+* to be completed
+
+
+
+```
+npm run transform:compute-graph-stats
 ```
 
 ### Customize transformations
