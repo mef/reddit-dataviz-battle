@@ -50,42 +50,12 @@ npm run extract
 
 The transform can run in stand-alone, as long as the extraction step has been executed once.
 
-It chains all the transformation steps listed below.
+It generates one svg image per frame to be used in the final video.
+
+ffmpeg needs then to be executed in order to compile the video in an mp4 file.
 
 ```
 npm run transform
-```
-
-### Build infection graph
-
-This first step of the transform process builds a graph of comments and infections. The results are an export of the [Graphology](graphology.github.io/) instance, stored in `./data/staging/infection-graph.json`.
-
-```
-npm run transform:build-graph
-```
-
-### Compute general statistics
-
-This script pulls figures out of the graph dataset:
-
-* timeline of infections (and commenting activity): `./data/dist/infectionCurve.json`.
-* (to be continued)
-
-
-```
-npm run transform:compute-stats
-```
-
-### Compute graph statistics
-
-This script runs the following graph processing algorithms, saves the resulting graph export as well as a rendered graph visualization.
-
-* to be completed
-
-
-
-```
-npm run transform:compute-graph-stats
 ```
 
 ### Customize transformations
