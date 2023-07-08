@@ -29,7 +29,7 @@
   "dependencies": {
     "d3": "^5.15.1",
     "d3-fetch": "^1.1.2",
-    "d3-node": "^2.2.1",
+    "d3-node": "^3.0.0",
     "graphology": "^0.17.1",
     "graphology-communities-louvain": "^1.1.0",
     "graphology-layout": "^0.2.0",
